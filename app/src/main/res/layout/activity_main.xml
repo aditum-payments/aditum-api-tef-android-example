@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:maxWidth="400dp"
+    android:orientation="vertical"
+    tools:context=".MainActivity"
+    android:id="@+id/llMainActivity">
+
+    <include layout="@layout/custom_action_bar" />
+
+    <LinearLayout
+        android:layout_width="400dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="15dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/etActivationCode"
+            android:layout_width="120dp"
+            android:layout_height="50dp"
+            android:autofillHints=""
+            android:ems="10"
+            android:hint="@string/activation_code"
+            android:inputType="number"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            tools:layout_editor_absoluteX="50dp"
+            tools:layout_editor_absoluteY="8dp" />
+
+        <Button
+            android:id="@+id/btInit"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="@string/init"
+            tools:layout_editor_absoluteX="247dp"
+            tools:layout_editor_absoluteY="10dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="400dp"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/rlFunctions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
+            android:layout_marginBottom="136dp">
+
+            <TableLayout
+                android:id="@+id/tlFunctions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TableRow>
+
+                    <EditText
+                        android:id="@+id/etAmount"
+                        android:layout_width="0dp"
+                        android:layout_weight="1.46"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="15dp"
+                        android:autofillHints="R$ 10,00"
+                        android:hint="@string/r_1_00"
+                        android:gravity="center"
+                        android:inputType="number"
+                        android:paddingTop="5dp"
+                        android:textSize="18sp"
+                        tools:text="R$8888888888,88" />
+
+                    <Spinner
+                        android:id="@+id/spPayType"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="15dp" />
+                </TableRow>
+
+                <TableRow android:gravity="center">
+
+                    <Spinner
+                        android:id="@+id/spInstType"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="15dp" />
+
+                    <Spinner
+                        android:id="@+id/spInstNumber"
+                        android:layout_width="0dp"
+                        android:layout_weight=".5"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="15dp" />
+                </TableRow>
+
+                <TableRow android:gravity="center">
+
+                    <Button
+                        android:id="@+id/btPay"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="55dp"
+                        android:text="@string/pay"
+                        android:textSize="14sp"
+                        android:layout_marginStart="15dp"
+                        android:layout_marginEnd="5dp" />
+
+                    <Button
+                        android:id="@+id/btConfirm"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="55dp"
+                        android:text="@string/confirm"
+                        android:textSize="13sp"
+                        android:layout_marginStart="5dp"
+                        android:layout_marginEnd="15dp" />
+                </TableRow>
+
+                <TableRow android:gravity="center">
+
+                    <Button
+                        android:id="@+id/btRevert"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="55dp"
+                        android:text="@string/revert"
+                        android:textSize="14sp"
+                        android:layout_marginEnd="5dp"
+                        android:layout_marginStart="15dp" />
+
+                    <Button
+                        android:id="@+id/btCancel"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="55dp"
+                        android:text="@string/cancel"
+                        android:textSize="14sp"
+                        android:layout_marginStart="5dp"
+                        android:layout_marginEnd="15dp" />
+                </TableRow>
+
+                <TableRow android:gravity="center">
+
+                    <Button
+                        android:id="@+id/btAbort"
+                        android:layout_width="150dp"
+                        android:layout_height="45dp"
+                        android:text="@string/abort"
+                        android:textSize="14sp" />
+                </TableRow>
+
+                <TableRow
+                    android:gravity="center"
+                    android:padding="0dp"
+                    android:layout_marginVertical="5dp">
+
+                    <TextView
+                        android:id="@+id/tvMessage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:isScrollContainer="true"
+                        android:minHeight="5dp"
+                        android:padding="0dp"
+                        android:scrollbars="vertical"
+                        android:textAlignment="center"
+                        android:textSize="18sp"
+                        tools:text="FALHA NA COMUNICAÇÃO" />
+                </TableRow>
+
+                <TableRow android:gravity="center">
+
+                    <EditText
+                        android:id="@+id/etMerchantChargeId"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_marginStart="15dp"
+                        android:layout_weight="1"
+                        android:autofillHints="000"
+                        android:hint="@string/merchant_charge_id"
+                        android:inputType="number"
+                        android:maxLines="2"
+                        android:textSize="15sp"
+                        tools:text="0000000000000000000000000000000000000000" />
+
+                    <Button
+                        android:id="@+id/btSeekCharge"
+                        android:layout_width="0dp"
+                        android:layout_weight=".8"
+                        android:layout_height="50dp"
+                        android:text="@string/seek_charge"
+                        android:layout_marginEnd="15dp" />
+
+                </TableRow>
+            </TableLayout>
+
+            <androidx.core.widget.NestedScrollView
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:layout_below="@+id/tlFunctions"
+                android:layout_marginBottom="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/ivQrCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="290dp"
+                        android:src="@drawable/qr_code" />
+
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+        </RelativeLayout>
+    </ScrollView>
+</LinearLayout>

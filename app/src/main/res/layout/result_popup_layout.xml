@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/rlQrcodeWindow"
+    android:background="@color/transparent_black">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true"
+        android:layout_marginStart="50dp"
+        android:layout_marginTop="50dp"
+        android:layout_marginEnd="50dp"
+        android:layout_marginBottom="50dp">
+
+        <LinearLayout
+            android:id="@+id/llResultWinTitle"
+            android:layout_width="250dp"
+            android:layout_height="30dp"
+            android:layout_above="@+id/rlResultText"
+            android:background="@drawable/rec_topleft_radius_10"
+            android:backgroundTint="@color/light_gray"
+            android:backgroundTintMode="src_in"
+            android:paddingVertical="3dp"
+            android:layout_alignStart="@+id/rlResultText">
+
+            <TextView
+                android:id="@+id/tvResultTitle"
+                android:layout_width="260dp"
+                android:layout_height="match_parent"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLength="30"
+                android:maxLines="1"
+                android:textColor="@color/black"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="5dp"
+                tools:text="720064210400065816741553200000" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llClosePopup"
+            android:layout_width="50dp"
+            android:layout_height="30dp"
+            android:layout_above="@+id/rlResultText"
+            android:layout_centerHorizontal="true"
+            android:background="@drawable/rec_topright_radius_10"
+            android:layout_toEndOf="@id/llResultWinTitle"
+            android:backgroundTint="@color/red"
+            android:backgroundTintMode="src_in"
+            android:paddingVertical="3dp"
+            android:layout_alignEnd="@+id/rlResultText"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="X"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-black"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+        <RelativeLayout
+            android:id="@+id/rlResultText"
+            android:layout_width="300dp"
+            android:layout_height="500dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/half_oblong_bottom_10"
+            android:backgroundTint="@color/light_gray"
+            android:backgroundTintMode="src_in"
+            android:padding="10dp">
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <ScrollView
+                    android:layout_width="280dp"
+                    android:layout_height="match_parent">
+
+                    <TextView
+                        android:id="@+id/tvResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/share_tech"
+                        android:textColor="@color/dark_gray" />
+                </ScrollView>
+            </HorizontalScrollView>
+        </RelativeLayout>
+    </RelativeLayout>
+</RelativeLayout>
