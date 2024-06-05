@@ -1,0 +1,16 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/openUpdateEmvTablesActivity"
+        android:title="Update EMV tables"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openCancelActivity"
+        android:title="Cancel transaction"
+        app:showAsAction="never"
+        />
+
+</menu>
