@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Payment</string>
+    <string name="paymentActivityTitle">Payment</string>
+    <string name="cancelationActivityTitle">Cancelation</string>
+    <string name="updateEmvTablesTitle">Update EMV Tables</string>
+
+    <string name="amountText">Amount</string>
+    <string name="operationTypeText">Operation Type</string>
+    <string name="originNsuText">Origin NSU</string>
+    <string name="paymentTypeText">Payment Type</string>
+    <string name="walletPaymentTypeText">Wallet Payment Type</string>
+    <string name="installmentTypeText">Installment Type</string>
+    <string name="installmentNumberText">Installment Number</string>
+    <string name="manualEntryText">Manual Entry (Typed sale)</string>
+    <string name="nsuTransactionText">NSU transaction</string>
+
+    <string name="initButtonText">Init</string>
+    <string name="payButtonText">Pay</string>
+    <string name="cancelButtonText">Cancel</string>
+    <string name="updateEmvTablesButtonText">Update Tables</string>
+    <string name="abortOperationButtonText">Abort Operation</string>
+</resources>
