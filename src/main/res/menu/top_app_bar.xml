@@ -1,0 +1,46 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/openUpdateEmvTablesActivity"
+        android:title="Update EMV tables"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openCancelActivity"
+        android:title="Cancel transaction"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openChargeActivity"
+        android:title="Get charge"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openConfirmActivity"
+        android:title="Confirm transaction"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openPendingTransactionsActivity"
+        android:title="Pending transactions"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openReportActivity"
+        android:title="Generate report"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openDeactivationActivity"
+        android:title="Terminal Deactivation"
+        app:showAsAction="never"
+        />
+
+</menu>

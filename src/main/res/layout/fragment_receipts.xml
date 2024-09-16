@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@android:color/white"
+        android:padding="8dp"
+	    android:elevation="3dp"
+        android:gravity="top|start"
+	    android:layout_gravity="center_horizontal">
+
+	   <TextView
+	       android:id="@+id/receiptContent"
+	       android:layout_width="384px"
+	       android:layout_height="wrap_content"
+	       android:textSize="10sp"
+           android:background="@android:color/white"
+           android:paddingLeft="0dp"
+           android:paddingTop="0dp"
+           android:paddingBottom="8dp"
+           android:paddingRight="0dp"
+	       android:gravity="top|start"
+	       android:layout_gravity="center_horizontal" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnToggleReceipt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Show Customer"
+        android:layout_marginTop="8dp"
+        android:layout_gravity="center_horizontal"/>
+
+    <Button
+        android:id="@+id/btnPrint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Print"
+        android:layout_marginTop="16dp"
+        android:layout_gravity="center_horizontal"/>
+
+    <Button
+        android:id="@+id/btnClose"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Close"
+        android:layout_marginTop="8dp"
+        android:layout_gravity="center_horizontal"/>
+
+</LinearLayout>
+
