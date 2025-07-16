@@ -18,8 +18,8 @@ import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textfield.TextInputEditText
 
-import br.com.aditum.data.v2.INotificationCallback
 import br.com.aditum.data.v2.enums.AbecsCommands
+import br.com.aditum.data.v2.enums.TransactionStatus
 import br.com.aditum.data.v2.model.init.UpdateEmvTablesCallback
 
 import br.com.aditum.IAditumSdkService
@@ -36,12 +36,6 @@ class UpdateEmvTablesActivity : AppCompatActivity() {
     private lateinit var mButton: Button
     private lateinit var mProgressBar: CircularProgressIndicator
 
-    private val mNotificationCallback = object : INotificationCallback.Stub() {
-        override fun onNotification(message: String?, command: AbecsCommands?) {
-            Log.d(TAG, "UpdateEmvTablesActivity::onNotification - message: $message, command: $command")
-        }
-    }
-
     private val mUpdateEmvTablesCallback = object : UpdateEmvTablesCallback.Stub() {
         override fun onResponse(success: Boolean) {
             Log.d(TAG, "onResponse - success: $success")
@@ -53,14 +47,23 @@ class UpdateEmvTablesActivity : AppCompatActivity() {
         }
     }
 
+    private val mPaymentCallback = object : PaymentCallback() {
+        override fun notification(message: String?, transactionStatus: TransactionStatus?, command: AbecsCommands?) {
+            Log.d(TAG, "${TAG}::notification - message: $message, transactionStatus: $transactionStatus, command: $command")
+            message?.let { msg ->
+                NotificationMessage.showToast(this@UpdateEmvTablesActivity, msg)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate")
-        
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
-        
+
         mPaymentApplication = application as PaymentApplication
-        mPaymentApplication.communicationService?.registerNotificationCallback(mNotificationCallback);
+        mPaymentApplication.communicationService?.registerPaymentCallback(mPaymentCallback);
 
         val color = SurfaceColors.SURFACE_3.getColor(this)
         window.statusBarColor = color

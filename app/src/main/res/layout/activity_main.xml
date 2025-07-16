@@ -45,6 +45,14 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/useOnlySdkSwitch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:checked="false"
+                    android:text="@string/useOnlySdkText" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/initButton"
                 style="@style/Widget.Material3.Button"

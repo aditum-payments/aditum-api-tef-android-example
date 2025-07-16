@@ -13,4 +13,34 @@
         app:showAsAction="never"
         />
 
+    <item
+        android:id="@+id/openChargeActivity"
+        android:title="Get charge"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openConfirmActivity"
+        android:title="Confirm transaction"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openPendingTransactionsActivity"
+        android:title="Pending transactions"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openReportActivity"
+        android:title="Generate report"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/openDeactivationActivity"
+        android:title="Terminal Deactivation"
+        app:showAsAction="never"
+        />
+
 </menu>

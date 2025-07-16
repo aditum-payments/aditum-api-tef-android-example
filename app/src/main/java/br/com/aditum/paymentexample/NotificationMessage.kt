@@ -7,15 +7,15 @@ import android.widget.Toast
 
 class NotificationMessage {
     companion object {
-        private lateinit var mToast: Toast
+        private var mToast: Toast? = null
 
         fun showMessageBox(context: Context, title: String, message: String) {
             (context as Activity).runOnUiThread {
                 val alertDialog = AlertDialog.Builder(context)
-                    .setTitle(title)
-                    .setMessage(message)
-                    .setPositiveButton("Ok") { dialog, _ -> dialog.dismiss() }
-                    .create()
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Ok") { dialog, _ -> dialog.dismiss() }
+                .create()
                 alertDialog.show()
             }
         }
@@ -23,25 +23,26 @@ class NotificationMessage {
         fun showMessageBox(context: Context, title: String, message: String, callback: () -> Unit) {
             (context as Activity).runOnUiThread {
                 val alertDialog = AlertDialog.Builder(context)
-                    .setTitle(title)
-                    .setMessage(message)
-                    .setPositiveButton("Ok") { dialog, _ ->
-                        callback.invoke()
-                        dialog.dismiss()
-                    }
-                    .create()
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Ok") { dialog, _ ->
+                    callback.invoke()
+                    dialog.dismiss()
+                }
+                .create()
                 alertDialog.show()
             }
         }
 
-        fun createToast(applicationContext: Context) {
-            mToast = Toast.makeText(applicationContext, "", Toast.LENGTH_SHORT)
-        }
-    
         fun showToast(context: Context, message: String) {
-            (context as Activity).runOnUiThread {
-                mToast.setText(message)
-                mToast.show()
+            try {
+                (context as Activity).runOnUiThread {
+                    mToast?.cancel()
+                    mToast = Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                    mToast?.show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

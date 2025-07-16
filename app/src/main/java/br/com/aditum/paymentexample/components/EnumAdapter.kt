@@ -21,7 +21,7 @@ class EnumAdapter<T>(context: Context, private val enumValues: List<T>) :
         )
 
         val nameTextView: TextView = view.findViewById(R.id.nameTextView)
-        nameTextView.text = enumValue?.toString() ?: ""
+        nameTextView.text = if (enumValue?.toString().equals("Undefined"))  "" else enumValue?.toString()
 
         return view
     }

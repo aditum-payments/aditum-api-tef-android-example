@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="br.com.aditum.paymentexample">
 
+    <queries>
+        <package android:name="br.com.aditum.smartpostef" />
+    </queries>
+
     <application
         android:name=".PaymentApplication"
         android:allowBackup="true"
@@ -40,9 +44,41 @@
 
         <activity
             android:name=".CancelationActivity"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="true"
+            android:theme="@style/Theme.PaymentExample" />
+
+         <activity
+            android:name=".ChargeActivity"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="true"
+            android:theme="@style/Theme.PaymentExample" />
+
+
+        <activity
+            android:name=".ConfirmActivity"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="true"
+            android:theme="@style/Theme.PaymentExample" />
+
+        <activity
+            android:name=".PendingTransactionsActivity"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:theme="@style/Theme.PaymentExample" />
+
+            <activity
+            android:name=".ReportActivity"
+            android:windowSoftInputMode="adjustPan"
+            android:exported="true"
+            android:theme="@style/Theme.PaymentExample" />
+
+        <activity
+            android:name=".DeactivationActivity"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true"
+            android:theme="@style/Theme.PaymentExample" />
+
     </application>
 
 </manifest>

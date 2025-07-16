@@ -19,19 +19,27 @@ class PaymentApplication : Application() {
     public val PACKAGE_BASE_NAME: String = "br.com.aditum"
     public val PACKAGE_NAME: String = PACKAGE_BASE_NAME + ".smartpostef"
     public val ACTION_COMMUNICATION_SERVICE: String = PACKAGE_BASE_NAME + ".AditumSdkService"
-    
+
     @Volatile
     private var mIsServiceConnected: Boolean = false
     val isServiceConnected: Boolean
     get() = mIsServiceConnected
-    
+
     @Volatile
     private var mAditumSdkService: IAditumSdkService? = null
-    val communicationService: IAditumSdkService? 
+    val communicationService: IAditumSdkService?
     get() = mAditumSdkService
-    
+
     @Volatile
     public var merchantData: MerchantData? = null
+
+    @Volatile
+    public var mUseOnlySdk: Boolean = false
+    var useOnlySdk: Boolean
+    get() = mUseOnlySdk
+    set(value) {
+        mUseOnlySdk = value
+    }
 
     private val mServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(componentName: ComponentName, service: IBinder) {
@@ -39,7 +47,7 @@ class PaymentApplication : Application() {
             mAditumSdkService = IAditumSdkService.Stub.asInterface(service)
             setServiceConnected(true)
         }
-    
+
         override fun onServiceDisconnected(componentName: ComponentName) {
             Log.d(TAG, "onServiceDisconnected")
             mAditumSdkService = null
@@ -75,6 +83,8 @@ class PaymentApplication : Application() {
 
         val intent: Intent = Intent(ACTION_COMMUNICATION_SERVICE)
         intent.setPackage(PACKAGE_NAME)
+        Log.d(TAG, "ACTION_COMMUNICATION_SERVICE: $ACTION_COMMUNICATION_SERVICE")
+        Log.d(TAG, "PACKAGE_NAME: $PACKAGE_NAME")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Log.d(TAG, "Android Oreo or higher: " + Build.VERSION.SDK_INT);
@@ -84,8 +94,8 @@ class PaymentApplication : Application() {
             startService(intent);
         }
 
-        bindService(intent, mServiceConnection, (Context.BIND_AUTO_CREATE or Context.CONTEXT_IGNORE_SECURITY))
-        Log.d(TAG, "startAditumSdkService - bindService")
+        val bound = bindService(intent, mServiceConnection, (Context.BIND_AUTO_CREATE))
+        Log.d(TAG, "startAditumSdkService - bindService returned: $bound")
     }
 
     private fun setServiceConnected(isConnected: Boolean) {

@@ -12,8 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.navigation.ui.AppBarConfiguration
 
-import br.com.aditum.data.v2.INotificationCallback
 import br.com.aditum.data.v2.enums.AbecsCommands
+import br.com.aditum.data.v2.enums.TransactionStatus
 import br.com.aditum.data.v2.model.init.InitRequest
 import br.com.aditum.data.v2.model.init.InitResponse
 import br.com.aditum.data.v2.model.init.InitResponseCallback
@@ -23,6 +23,7 @@ import br.com.aditum.IAditumSdkService
 import br.com.aditum.paymentexample.databinding.ActivityMainBinding
 
 import android.widget.Button
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.elevation.SurfaceColors
 import com.google.android.material.progressindicator.CircularProgressIndicator
@@ -41,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mPaymentApplication: PaymentApplication
     private lateinit var mInitButton: Button
     private lateinit var mActivationCodeEditText: TextInputEditText
+    private lateinit var mUseOnlySdkSwitch: MaterialSwitch
 
     private val mInitResponseCallback = object : InitResponseCallback.Stub() {
         override fun onResponse(initResponse: InitResponse?) {
@@ -62,9 +64,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val mNotificationCallback = object : INotificationCallback.Stub() {
-        override fun onNotification(message: String?, command: AbecsCommands?) {
-            Log.d(TAG, "MainActivity::onNotification - message: $message, command: $command")
+    private val mPaymentCallback = object : PaymentCallback() {
+        override fun notification(message: String?, transactionStatus: TransactionStatus?, command: AbecsCommands?) {
+            Log.d(TAG, "$TAG::notification - message: $message, transactionStatus: $transactionStatus, command: $command")
             message?.let { msg ->
                 NotificationMessage.showToast(this@MainActivity, msg)
             }
@@ -77,7 +79,7 @@ class MainActivity : AppCompatActivity() {
             if (serviceConnected) {
                 mInitButton.isEnabled = true
                 mActivationCodeEditText.isEnabled = true
-                mPaymentApplication.communicationService?.registerNotificationCallback(mNotificationCallback)
+                mPaymentApplication.communicationService?.registerPaymentCallback(mPaymentCallback)
             }
         }
     }
@@ -87,8 +89,6 @@ class MainActivity : AppCompatActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
-
-        NotificationMessage.createToast(applicationContext)
 
         val color = SurfaceColors.SURFACE_3.getColor(this)
         window.statusBarColor = color
@@ -114,8 +114,22 @@ class MainActivity : AppCompatActivity() {
         mProgressBar = mBinding.progressBar
         hideProgressBar()
 
-        mInitButton.isEnabled = false
-        mActivationCodeEditText.isEnabled = false
+        mInitButton.isEnabled = mPaymentApplication.isServiceConnected
+        mActivationCodeEditText.isEnabled = mPaymentApplication.isServiceConnected
+
+        mUseOnlySdkSwitch = mBinding.useOnlySdkSwitch
+        mUseOnlySdkSwitch.isChecked = false
+    }
+
+    override fun onResume() {
+        Log.d(TAG, "onResume")
+        super.onResume()
+
+        mPaymentApplication.communicationService?.let { communicationService: IAditumSdkService ->
+            mInitButton.isEnabled = true
+            mActivationCodeEditText.isEnabled = true
+            communicationService.registerPaymentCallback(mPaymentCallback)
+        }
     }
 
     private fun onInitButtonClick() {
@@ -131,22 +145,25 @@ class MainActivity : AppCompatActivity() {
         mActivationCodeEditText.isEnabled = false
         showProgressBar()
 
+        mPaymentApplication.useOnlySdk = mUseOnlySdkSwitch.isChecked
+
         thread {
             mPaymentApplication.communicationService?.let { communicationService: IAditumSdkService ->
                 val pinpadMessages = PinpadMessages()
                 pinpadMessages.mainMessage = "Payment Example"
-                
+
                 val initRequest = InitRequest()
                 initRequest.pinpadMessages = pinpadMessages
                 initRequest.activationCode = activationCode
                 initRequest.applicationName = "PaymentExample"
                 initRequest.applicationVersion = "1.0.0"
                 initRequest.applicationToken = "mk_Lfq9yMzRoYaHjowfxLvoyi"
+                initRequest.useOnlySdk = mPaymentApplication.useOnlySdk
                 communicationService.init(initRequest, mInitResponseCallback)
             } ?: run {
                 NotificationMessage.showMessageBox(this, "Error", "Communication service not available. Trying to recreate communication with service.")
                 mPaymentApplication.startAditumSdkService()
-                
+
                 runOnUiThread {
                     mInitButton.isEnabled = true
                     mActivationCodeEditText.isEnabled = true
