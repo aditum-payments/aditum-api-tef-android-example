@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- permissão que o serviço App2App da Aditum exige de quem se liga a ele -->
     <uses-permission android:name="br.com.aditum.smartpostef.permission.BIND_TEF" />
+    <!-- Android 11+: o app precisa declarar que enxerga o pacote do serviço -->
     <queries><package android:name="br.com.aditum.smartpostef" /></queries>
-    <application android:label="Aditum Payment Example" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <activity android:name=".MainActivity" android:exported="true">
+    <application
+        android:name=".PayTrialApp"
+        android:label="Aditum Pay Trial"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="false"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.PayTrial">
+        <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>
     </application>

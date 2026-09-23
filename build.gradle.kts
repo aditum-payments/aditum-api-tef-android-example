@@ -1,42 +1,81 @@
-import br.com.aditum.buildlogic.AditumSigning
-import br.com.aditum.buildlogic.ArtifactNames
-import br.com.aditum.buildlogic.Devices
-import br.com.aditum.buildlogic.buildAxes
-import br.com.aditum.buildlogic.requestedModel
-import com.android.build.api.artifact.SingleArtifact
+import java.util.Properties
 
 plugins {
-    id("aditum.android.app")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.compose.multiplatform)
 }
 
-// O exemplo é instalado no terminal ao lado do serviço, então é assinado com a chave do modelo pedido em
-// -Paditum.model (Positivo e Gertec exigem a do fabricante); sem modelo é o pacote genérico TefSdk (doc 14 §7.2).
-val axes = buildAxes()
-val spec = requestedModel()?.let { Devices.find(it) ?: error("aditum: ${Devices.PROPERTY}=$it não está na matriz") } ?: Devices.defaultOf("generic")
+// token do integrador: -Ppaytrial.token, variável PAYTRIAL_TOKEN ou gradle.properties — nunca no código
+val partnerToken = providers.gradleProperty("paytrial.token").orNull ?: System.getenv("PAYTRIAL_TOKEN") ?: ""
+// keystore opcional (a chave do fabricante do terminal): -Ppaytrial.keystore=/caminho.jks + senhas por variável
+val keystorePath = providers.gradleProperty("paytrial.keystore").orNull
+val gitHash = runCatching {
+    providers.exec { commandLine("git", "rev-parse", "--short=9", "HEAD"); isIgnoreExitValue = true }.standardOutput.asText.get().trim()
+}.getOrDefault("").ifBlank { "local" }
 
 android {
-    namespace = "br.com.aditum.tef.sdk.example"
-    defaultConfig { applicationId = "br.com.aditum.paymentexample" }
-    buildFeatures { compose = true }
-    buildTypes { release { signingConfig = signingConfigs.getByName("debug") } }
-    androidComponents {
-        val signing = AditumSigning(project, this@android)
-        onVariants { v ->
-            if (v.buildType == "release") v.signingConfig?.setConfig(signing.forRelease(spec.signing, v.name))
-            val fileName = ArtifactNames.exampleApk(axes, spec.token, v.buildType ?: "debug")
-            val dist = tasks.register<Copy>("dist${v.name.replaceFirstChar { it.uppercase() }}") {
-                group = "distribution"; description = "Copia o APK ${v.name} para build/dist/$fileName"
-                from(v.artifacts.get(SingleArtifact.APK)) { include("*.apk") }; rename { fileName }; into(layout.buildDirectory.dir("dist"))
-            }
-            tasks.matching { it.name == "assemble${v.name.replaceFirstChar { c -> c.uppercase() }}" }.configureEach { finalizedBy(dist) }
+    namespace = "br.com.aditum.paytrial"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        applicationId = "br.com.aditum.paytrial"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = 300
+        versionName = "3.0.0"
+        buildConfigField("String", "PARTNER_TOKEN", "\"$partnerToken\"")
+        buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+        vectorDrawables.useSupportLibrary = true
+    }
+    signingConfigs {
+        if (keystorePath != null) create("terminal") {
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("PAYTRIAL_STORE_PASSWORD")
+            keyAlias = System.getenv("PAYTRIAL_KEY_ALIAS")
+            keyPassword = System.getenv("PAYTRIAL_KEY_PASSWORD")
         }
     }
+    buildTypes {
+        debug { if (keystorePath != null) signingConfig = signingConfigs.getByName("terminal") }
+        release {
+            isMinifyEnabled = false
+            signingConfig = if (keystorePath != null) signingConfigs.getByName("terminal") else signingConfigs.getByName("debug")
+        }
+    }
+    buildFeatures { compose = true; buildConfig = true; aidl = false }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
+kotlin { jvmToolchain(17) }
+
+// nome do artefato como nos demais APKs da Aditum: AditumPayTrial-<versão>+<hash>-<tipo>.apk em build/dist/
+androidComponents {
+    onVariants { v ->
+        val name = "AditumPayTrial-3.0.0+$gitHash-${v.buildType}.apk"
+        val dist = tasks.register<Copy>("dist${v.name.replaceFirstChar { it.uppercase() }}") {
+            from(v.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)) { include("*.apk"); rename { name } }
+            into(layout.buildDirectory.dir("dist"))
+        }
+        tasks.matching { it.name == "assemble${v.name.replaceFirstChar { c -> c.uppercase() }}" }.configureEach { finalizedBy(dist) }
+    }
+}
+
 dependencies {
-    implementation(project(":sdk:integration"))
-    implementation(libs.androidx.core.ktx); implementation(libs.androidx.activity.compose)
-    implementation(compose.runtime); implementation(compose.foundation); implementation(compose.material3); implementation(compose.ui)
-    androidTestImplementation(libs.androidx.test.runner); androidTestImplementation(libs.androidx.test.junit)
+    // o contrato App2App, como um integrador recebe: o .aar da Aditum dentro do app
+    implementation(files("libs/AditumSdkIntegration-A2A-3.0.0.aar"))
+    implementation(libs.kotlin.parcelize.runtime)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.coroutines.android)
+    implementation(libs.zxing.core)
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.json)
 }

@@ -1,0 +1,9 @@
+<resources>
+    <!-- tema da janela antes do Compose: fundo da superfície do design system, sem barra de ação -->
+    <style name="Theme.PayTrial" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/pt_surface</item>
+        <item name="android:statusBarColor">@color/pt_surface</item>
+        <item name="android:navigationBarColor">@color/pt_surface</item>
+    </style>
+    <color name="pt_surface">#FDF8FD</color>
+</resources>
