@@ -127,6 +127,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 is Res.Ok -> if (r.value.initialized) {
                     terminal = r.value.terminalInfo; brands = r.value.availableBrands.orEmpty()
                     loadMerchant(); reset(Screen.Home); refreshPending()
+                    // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
+                    r.value.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
                 } else initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"
                 is Res.Fail -> initError = r.message
             }
