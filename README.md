@@ -53,7 +53,9 @@ desenha as telas durante a operação:
 - **Telas da Aditum** (`useOnlySdk = false`): o serviço abre as próprias telas para cartão, senha e menus e as
   fecha antes de responder. O resultado é sempre mostrado pelo integrador.
 - **Telas do integrador** (`useOnlySdk = true`): nenhuma tela da Aditum; mensagens, senha, menus e QR Code chegam
-  por `IPaymentCallback` e o app desenha tudo. As mensagens do pinpad são configuráveis nessa opção.
+  por `IPaymentCallback` e o app desenha tudo.
+
+As mensagens do pinpad (`InitRequest.pinpadMessages`) ficam na mesma tela e valem nos dois modos.
 
 Se o banner disser *"versão standalone, sem o serviço App2App"*, o terminal tem o app standalone da Aditum no lugar
 do serviço.
