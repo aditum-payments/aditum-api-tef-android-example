@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Gera src/main/kotlin/br/com/aditum/paytrial/designsystem/PtIcons.kt a partir do Tabler Icons (MIT).
 
-Regra do design system do Aditum Pay Trial: ícone PREENCHIDO quando o Tabler tem a versão preenchida; em LINHA
-(traço 2, pontas e junções redondas) nos glifos que são linha por natureza (setas, fechar, mais, menos, marcar) e nos
-objetos que o Tabler não tem preenchidos. A caixa invisível de 24x24 que abre todo SVG do Tabler é descartada.
+Regra do design system do Aditum Pay Trial (Kelvin, 23/09): todo ícone em LINHA — a versão outline do Tabler, traço 2,
+pontas e junções redondas. A caixa invisível de 24x24 que abre todo SVG do Tabler é descartada.
 
 Uso:  python3 tools/icons.py            (baixa o pacote npm na versão fixa abaixo; precisa de rede só aqui)
 O Kotlin gerado é commitado: o build do app nunca baixa nada.
@@ -87,7 +86,7 @@ def main():
     files = load()
     out = []
     for key, (name, glyph) in ICONS.items():
-        kind = "filled" if (not glyph and ("filled", name) in files) else "outline"
+        kind = "outline"
         svg = files[(kind, name)]
         paths = [absolute_moves(d) for d in re.findall(r'<path[^>]*\sd="([^"]+)"', svg) if d != "M0 0h24v24H0z"]
         assert paths, name
