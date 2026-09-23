@@ -22,6 +22,15 @@ object Labels {
     fun brand(b: CardBrand?) = if (b == null || b == CardBrand.Undefined) "" else b.name.uppercase()
     fun printStatus(s: PrintStatus?) = when (s) { PrintStatus.Ok -> "Impresso"; PrintStatus.OutOfPaper -> "Sem papel"; PrintStatus.Busy -> "Impressora ocupada"; PrintStatus.Overheat -> "Impressora superaquecida"; PrintStatus.MalFunctions -> "Falha na impressora"; PrintStatus.DataTooLarge -> "Comprovante grande demais"; else -> "Falha na impressão (${s?.name})" }
 
+    /** O que o app mostra enquanto uma chamada ao serviço está em curso (a barra de processo). */
+    fun callTitle(method: String) = when (method) {
+        "init" -> "Inicializando o terminal…"; "updateEmvTables" -> "Atualizando as tabelas…"; "getMerchantData" -> "Buscando o estabelecimento…"
+        "charge" -> "Consultando a transação…"; "pendingTransactions" -> "Consultando as pendências…"; "confirmTransaction" -> "Confirmando a venda…"
+        "generateReport" -> "Gerando o relatório…"; "deactivate" -> "Desativando o terminal…"; "sendReceipt" -> "Enviando o comprovante…"
+        "print" -> "Imprimindo…"; "pay" -> "Pagamento em andamento…"; "cancel" -> "Cancelamento em andamento…"
+        else -> "Aguardando o serviço…"
+    }
+
     /** Título legível do passo, a partir do status da notificação (a mensagem do serviço vem embaixo). */
     fun step(s: TransactionStatus?) = when (s) {
         TransactionStatus.StartingTransaction -> "Iniciando"; TransactionStatus.ChargingTables -> "Carregando tabelas"; TransactionStatus.ValidatingOnline -> "Validando"

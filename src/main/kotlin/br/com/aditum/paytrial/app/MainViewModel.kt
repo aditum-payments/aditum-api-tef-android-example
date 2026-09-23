@@ -94,13 +94,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var pendingCount by mutableStateOf(0); private set
     /** Chamada em curso fora de operação (consulta, confirmação, impressão…), para travar botões. */
     var busy by mutableStateOf<String?>(null); private set
+    /** Última `notification` do serviço, de qualquer chamada (tabelas, init…): a barra de processo mostra a mais recente. */
+    var notice by mutableStateOf<PaymentEvent.Notification?>(null); private set
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages: SharedFlow<String> get() = _messages
     fun say(text: String) { _messages.tryEmit(text) }
 
     init {
-        viewModelScope.launch { client.events.collect(::onEvent) }
+        viewModelScope.launch { client.events.collect { e -> if (e is PaymentEvent.Notification) notice = e; onEvent(e) } }
         client.screen = current.tag
     }
 

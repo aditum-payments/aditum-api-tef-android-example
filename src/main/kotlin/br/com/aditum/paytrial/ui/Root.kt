@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import br.com.aditum.paytrial.app.Labels
 import br.com.aditum.paytrial.app.MainViewModel
 import br.com.aditum.paytrial.app.Screen
 import br.com.aditum.paytrial.client.Prompt
@@ -61,7 +62,18 @@ fun PayTrialRoot(vm: MainViewModel) {
                 Screen.Console -> ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
             }
         }
-        SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp)) { PtSnackbar(it.visuals.message) }
+        // barra de processo: qualquer chamada em curso ganha aviso na hora (depois de 300 ms, para as instantâneas não
+        // piscarem), com a última `notification` que o serviço mandou desde que ela começou. Venda e cancelamento têm a
+        // tela de operação e ficam de fora.
+        val running = entries.filter { it.running && it.method !in TRANSACTION_CALLS }
+        val first = running.firstOrNull()
+        var shown by remember { mutableStateOf<TraceEntry?>(null) }
+        LaunchedEffect(first?.id) { if (first == null) shown = null else { delay(300); shown = first } }
+        val notice = vm.notice
+        val bar = shown
+        if (bar != null && first != null) ProcessBar(Labels.callTitle(bar.method), notice?.takeIf { it.at >= bar.startedAt }?.message, bar.method, running.size - 1,
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp))
+        else SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp)) { PtSnackbar(it.visuals.message) }
     }
     // pedidos do serviço com "Telas do integrador": uma folha nova a cada pedido (sem herdar o texto do anterior)
     prompt?.let { p -> key(p) { PromptSheet(p, onAbortOperation = { vm.abort() }) } }

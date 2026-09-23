@@ -336,6 +336,23 @@ fun Banner(title: String, tone: Tone, text: String? = null, icon: ImageVector = 
 }
 
 /** Aviso passageiro em cor invertida ao tema. */
+/**
+ * Barra de processo: uma chamada ao serviço está em curso. Título do que está acontecendo, a última mensagem que o
+ * serviço mandou por `notification` (quando mandou) e o método, para quem está integrando.
+ */
+@Composable
+fun ProcessBar(title: String, message: String?, method: String, extra: Int = 0, modifier: Modifier = Modifier) {
+    Row(modifier.padding(12.dp).fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.inverseSurface).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.inversePrimary, strokeWidth = 2.dp)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.inverseOnSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!message.isNullOrBlank()) Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Text(method + if (extra > 0) " +$extra" else "", style = MonoStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize), color = MaterialTheme.colorScheme.inversePrimary, maxLines = 1)
+    }
+}
+
 @Composable
 fun PtSnackbar(message: String) {
     Row(Modifier.padding(12.dp).fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.inverseSurface).padding(14.dp),
