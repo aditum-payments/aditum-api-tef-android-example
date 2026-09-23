@@ -44,6 +44,9 @@ import com.google.zxing.qrcode.QRCodeWriter
  * Tela do Aditum Pay Trial: barra superior com o título simples à esquerda (sem pílula, para não parecer a tela da
  * Aditum), Voltar ou Fechar, ações à direita e rodapé fixo. O conteúdo rola quando [scroll] é verdadeiro.
  */
+/** Ação fixa da barra do topo em qualquer tela (o chip do inspetor), fornecida pela raiz do app. */
+val LocalTopBarExtra = compositionLocalOf<(@Composable RowScope.() -> Unit)?> { null }
+
 @Composable
 fun PtScaffold(
     title: String, onBack: (() -> Unit)? = null, onClose: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {},
@@ -61,7 +64,7 @@ fun PtScaffold(
                         onClose != null -> IconButton(onClick = onClose) { PtIcon(PtIcons.Close, "Fechar") }
                     }
                 },
-                actions = actions,
+                actions = { LocalTopBarExtra.current?.invoke(this); actions() },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
@@ -473,10 +476,10 @@ fun QrCode(content: String, size: Dp = 220.dp) {
 /** Chip do inspetor (modo de integração): a última chamada da tela; tocar abre o par requisição/resposta. */
 @Composable
 fun InspectorChip(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(modifier.clip(MaterialTheme.shapes.medium).background(Color(0xFF1E1B26)).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier.clip(MaterialTheme.shapes.medium).background(Color(0xFF1E1B26)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         PtIcon(PtIcons.Json, tint = Color(0xFFCDBDFC), size = 16.dp)
-        Text(text, style = MonoStyle.copy(fontSize = MaterialTheme.typography.labelMedium.fontSize), color = Color(0xFFE9E4F5), maxLines = 1)
+        Text(text, style = MonoStyle.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize), color = Color(0xFFE9E4F5), maxLines = 1)
     }
 }
 

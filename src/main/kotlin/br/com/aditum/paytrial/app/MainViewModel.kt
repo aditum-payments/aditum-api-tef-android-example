@@ -205,12 +205,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun confirm(nsu: String, then: (Boolean) -> Unit = {}) {
         busy = "confirmTransaction"
         viewModelScope.launch {
-            val r = client.confirmTransaction(nsu); busy = null
+            val r = client.confirmTransaction(nsu)
             val ok = r is Res.Ok && r.value
-            if (ok) { if (result?.charge?.nsu == nsu) result = result?.copy(confirmed = true); say("Venda confirmada") } else say((r as? Res.Fail)?.message ?: "O serviço não confirmou a venda")
+            // o contrato só devolve Boolean: no `false`, as pendências dizem se a venda ainda espera confirmação
+            val stillPending = if (ok || r is Res.Fail) null else (client.pendingTransactions() as? Res.Ok)?.value?.any { it.nsu == nsu }
+            busy = null
+            when {
+                ok -> { markConfirmed(nsu); say("Venda confirmada") }
+                r is Res.Fail -> say(r.message)
+                stillPending == false -> { markConfirmed(nsu); say("O serviço respondeu false, mas a venda já não estava pendente: já tinha sido confirmada") }
+                stillPending == true -> say("O serviço respondeu false e a venda continua pendente: tente de novo")
+                else -> say("O serviço respondeu false")
+            }
             refreshPending(); then(ok)
         }
     }
+
+    private fun markConfirmed(nsu: String) { if (result?.charge?.nsu == nsu) result = result?.copy(confirmed = true) }
 
     /** Confirma uma lista, uma depois da outra (o serviço trata uma operação por vez). */
     fun confirmAll(nsus: List<String>, done: () -> Unit) {

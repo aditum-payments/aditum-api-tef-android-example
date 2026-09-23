@@ -35,6 +35,44 @@ ICONS = {
     "Check": ("check", True),
 }
 
+NUM = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
+ARGS = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "S": 4, "Q": 4, "T": 2, "A": 7, "Z": 0}
+
+def absolute_moves(d):
+    """Troca o `m` relativo depois de um `z` por `M` absoluto.
+
+    Pela especificação, depois do `z` o ponto corrente volta ao início do subcaminho; o parser do Compose usa o último
+    ponto antes do `z`, e os ícones de duas partes (o avião do `send`, por exemplo) saem com a segunda metade deslocada.
+    """
+    tokens = re.findall(r"[MmLlHhVvCcSsQqTtAaZz]|" + NUM.pattern, d)
+    out, i, cmd = [], 0, None
+    x = y = sx = sy = 0.0
+    after_close = False
+    while i < len(tokens):
+        t = tokens[i]
+        if t.isalpha():
+            cmd = t; i += 1
+            if cmd in "Zz":
+                x, y = sx, sy; after_close = True; out.append("z"); continue
+        n = ARGS[cmd.upper()]
+        vals = []
+        # flags de arco coladas ("0 01") não aparecem no Tabler, então basta ler números
+        while len(vals) < n: vals.append(float(tokens[i])); i += 1
+        rel = cmd.islower()
+        if cmd == "m" and after_close:
+            x, y = x + vals[0], y + vals[1]; sx, sy = x, y
+            out.append(f"M{round(x, 4):g} {round(y, 4):g}"); cmd = "l"; after_close = False; continue
+        after_close = False
+        out.append(cmd + " ".join(f"{v:g}" for v in vals))
+        U = cmd.upper()
+        if U == "H": x = x + vals[0] if rel else vals[0]
+        elif U == "V": y = y + vals[0] if rel else vals[0]
+        else:
+            ex, ey = vals[-2], vals[-1]
+            x, y = (x + ex, y + ey) if rel else (ex, ey)
+        if U == "M": sx, sy = x, y; cmd = "l" if rel else "L"
+    return " ".join(out)
+
 def load():
     meta = json.load(urllib.request.urlopen(f"https://registry.npmjs.org/@tabler/icons/{TABLER_VERSION}", timeout=60))
     data = urllib.request.urlopen(meta["dist"]["tarball"], timeout=120).read()
@@ -51,7 +89,7 @@ def main():
     for key, (name, glyph) in ICONS.items():
         kind = "filled" if (not glyph and ("filled", name) in files) else "outline"
         svg = files[(kind, name)]
-        paths = [d for d in re.findall(r'<path[^>]*\sd="([^"]+)"', svg) if d != "M0 0h24v24H0z"]
+        paths = [absolute_moves(d) for d in re.findall(r'<path[^>]*\sd="([^"]+)"', svg) if d != "M0 0h24v24H0z"]
         assert paths, name
         style = "FILL" if kind == "filled" else "LINE"
         args = ", ".join('"' + d + '"' for d in paths)

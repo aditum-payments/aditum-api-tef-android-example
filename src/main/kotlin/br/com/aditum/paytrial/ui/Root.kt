@@ -34,28 +34,31 @@ fun PayTrialRoot(vm: MainViewModel) {
         when (vm.current) { Screen.Operation -> vm.abort(); Screen.Result -> vm.home(); else -> vm.pop() }
     }
 
+    // chip do inspetor, na barra do topo: a última transação (pay/cancel), de qualquer tela (modo de integração)
+    val entries by vm.trace.entries.collectAsState()
+    val lastTx = entries.lastOrNull { it.kind == TraceEntry.Kind.CALL && it.method in TRANSACTION_CALLS }
+    val chip: (@Composable RowScope.() -> Unit)? = if (settings.integrationMode && lastTx != null && vm.current !is Screen.Console) {
+        { InspectorChip(inspectorText(lastTx), Modifier.padding(end = 8.dp)) { rawTab = 1; rawId = lastTx.id } }
+    } else null
+
     Box(Modifier.fillMaxSize()) {
-        when (val s = vm.current) {
-            Screen.Connect -> ConnectScreen(vm)
-            Screen.Home -> HomeScreen(vm)
-            is Screen.Amount -> AmountScreen(vm, s.op)
-            is Screen.Checkout -> CheckoutScreen(vm, s.amount, s.op)
-            Screen.Operation -> OperationScreen(vm)
-            Screen.Result -> ResultScreen(vm, onRaw = { id, t -> rawTab = t; rawId = id })
-            is Screen.Receipt -> ReceiptScreen(vm, s.charge)
-            is Screen.Cancel -> CancelScreen(vm, s.nsu)
-            is Screen.Lookup -> LookupScreen(vm, s.nsu)
-            Screen.Confirm -> ConfirmScreen(vm)
-            Screen.Report -> ReportScreen(vm)
-            Screen.More -> MoreScreen(vm)
-            Screen.Developer -> DeveloperScreen(vm)
-            Screen.Console -> ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
-        }
-        // chip do inspetor: a última chamada desta tela (modo de integração)
-        if (settings.integrationMode && vm.current !is Screen.Console) {
-            val entries by vm.trace.entries.collectAsState()
-            val last = entries.lastOrNull { it.kind == TraceEntry.Kind.CALL && it.screen == vm.current.tag }
-            if (last != null) InspectorChip(inspectorText(last), Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 16.dp, bottom = 84.dp)) { rawTab = 1; rawId = last.id }
+        CompositionLocalProvider(LocalTopBarExtra provides chip) {
+            when (val s = vm.current) {
+                Screen.Connect -> ConnectScreen(vm)
+                Screen.Home -> HomeScreen(vm)
+                is Screen.Amount -> AmountScreen(vm, s.op)
+                is Screen.Checkout -> CheckoutScreen(vm, s.amount, s.op)
+                Screen.Operation -> OperationScreen(vm)
+                Screen.Result -> ResultScreen(vm, onRaw = { id, t -> rawTab = t; rawId = id })
+                is Screen.Receipt -> ReceiptScreen(vm, s.charge)
+                is Screen.Cancel -> CancelScreen(vm, s.nsu)
+                is Screen.Lookup -> LookupScreen(vm, s.nsu)
+                Screen.Confirm -> ConfirmScreen(vm)
+                Screen.Report -> ReportScreen(vm)
+                Screen.More -> MoreScreen(vm)
+                Screen.Developer -> DeveloperScreen(vm)
+                Screen.Console -> ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
+            }
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp)) { PtSnackbar(it.visuals.message) }
     }
@@ -63,6 +66,9 @@ fun PayTrialRoot(vm: MainViewModel) {
     prompt?.let { p -> key(p) { PromptSheet(p, onAbortOperation = { vm.abort() }) } }
     rawId?.let { id -> vm.trace.find(id)?.let { RawSheet(it, settings.receiptsInJson, rawTab) { rawId = null } } ?: run { rawId = null } }
 }
+
+/** Chamadas que o chip acompanha: as que movem dinheiro. */
+val TRANSACTION_CALLS = setOf("pay", "cancel")
 
 fun inspectorText(e: TraceEntry): String = e.method + when { e.running -> "  …"; e.failed -> "  ✕ ${e.durationMs} ms"; else -> "  ← ${e.durationMs} ms" }
 
