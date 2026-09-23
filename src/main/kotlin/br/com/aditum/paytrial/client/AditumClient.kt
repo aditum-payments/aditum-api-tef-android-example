@@ -258,6 +258,8 @@ class AditumClient(context: Context, val trace: TraceLog) {
     /** Síncrono no contrato: roda fora da thread de UI. */
     suspend fun merchantData(): Res<MerchantData> = call("getMerchantData", null, MIN / 2) { s, done -> done(s.merchantData ?: MerchantData()) }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }
+    /** O terminal tem impressora? O contrato responde com `getDeviceSdk().printerSdk` nulo quando não tem. */
+    suspend fun hasPrinter(): Res<Boolean> = call("getDeviceSdk", null, MIN / 2) { s, done -> done(s.deviceSdk?.printerSdk != null) }
     /** Imprime um bitmap pela impressora do terminal (`getDeviceSdk().printerSdk`). */
     suspend fun print(bitmap: Bitmap): Res<PrintStatus> = call("print", mapOf("bitmap" to "${bitmap.width}x${bitmap.height}"), MIN) { s, done ->
         val printer = s.deviceSdk?.printerSdk ?: throw IllegalStateException("terminal sem impressora")

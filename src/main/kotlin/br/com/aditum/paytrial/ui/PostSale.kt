@@ -97,7 +97,7 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
                 StatusTag("Aguardando confirmação do integrador", Tone.Warning)
                 ListRow("Confirmar", icon = PtIcons.Confirm, details = listOf("confirmTransaction"), onClick = { vm.confirm(c.nsu.orEmpty()) { search() } })
             }
-            ListRow("Reimprimir", icon = PtIcons.Print, onClick = { vm.push(Screen.Receipt(c)) })
+            ListRow(if (vm.hasPrinter) "Reimprimir" else "Ver comprovante", icon = if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt, onClick = { vm.push(Screen.Receipt(c)) })
             ListRow("Enviar comprovante", icon = PtIcons.Send, onClick = { send = true })
             ListRow("Cancelar", icon = PtIcons.Cancel, onClick = { vm.push(Screen.Cancel(c.nsu.orEmpty())) })
         }

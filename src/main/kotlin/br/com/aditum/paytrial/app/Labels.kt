@@ -27,7 +27,7 @@ object Labels {
         "init" -> "Inicializando o terminal…"; "updateEmvTables" -> "Atualizando as tabelas…"; "getMerchantData" -> "Buscando o estabelecimento…"
         "charge" -> "Consultando a transação…"; "pendingTransactions" -> "Consultando as pendências…"; "confirmTransaction" -> "Confirmando a venda…"
         "generateReport" -> "Gerando o relatório…"; "deactivate" -> "Desativando o terminal…"; "sendReceipt" -> "Enviando o comprovante…"
-        "print" -> "Imprimindo…"; "pay" -> "Pagamento em andamento…"; "cancel" -> "Cancelamento em andamento…"
+        "print" -> "Imprimindo…"; "getDeviceSdk" -> "Consultando a impressora…"; "pay" -> "Pagamento em andamento…"; "cancel" -> "Cancelamento em andamento…"
         else -> "Aguardando o serviço…"
     }
 

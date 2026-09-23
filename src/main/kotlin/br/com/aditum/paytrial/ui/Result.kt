@@ -64,7 +64,7 @@ fun ResultScreen(vm: MainViewModel, onRaw: (Long, Int) -> Unit) {
             }
             KeyValueCard(chargeRows(c), MONO_KEYS)
             if (r.approved && !r.undone) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PtButton("Imprimir", { vm.push(Screen.Receipt(c)) }, Modifier.weight(1f), PtButtonKind.Tonal, PtIcons.Print)
+                PtButton(if (vm.hasPrinter) "Imprimir" else "Comprovante", { vm.push(Screen.Receipt(c)) }, Modifier.weight(1f), PtButtonKind.Tonal, if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt)
                 PtButton("Enviar", { send = true }, Modifier.weight(1f), PtButtonKind.Tonal, PtIcons.Send)
             }
         }
@@ -116,11 +116,14 @@ fun ReceiptScreen(vm: MainViewModel, c: Charge) {
     var send by remember { mutableStateOf(false) }
     val lines = when (via) { 0 -> c.merchantReceipt.orEmpty(); 1 -> c.cardholderReceipt.orEmpty(); else -> c.merchantReceipt.orEmpty() + listOf("", "- - - - - - - - - - - - - - - -", "") + c.cardholderReceipt.orEmpty() }
     PtScaffold("Comprovante", onBack = { vm.pop() }, bottomBar = {
-        ActionRow(secondary = { PtButton("Enviar", { send = true }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Send) },
+        // sem impressora (getPrinterSdk() nulo) o comprovante sai só por envio
+        if (vm.hasPrinter) ActionRow(secondary = { PtButton("Enviar", { send = true }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Send) },
             primary = { PtButton(if (vm.busy == "print") "Imprimindo…" else "Imprimir", { vm.print(c, via != 1, via != 0) }, Modifier.weight(1f), icon = PtIcons.Print, enabled = vm.busy == null) })
+        else PtButton("Enviar comprovante", { send = true }, Modifier.fillMaxWidth(), icon = PtIcons.Send)
     }) {
         SplitChoice(listOf(Triple(0, "Loja", PtIcons.Store), Triple(1, "Cliente", PtIcons.Person), Triple(2, "Ambas", PtIcons.Receipt)), via, { via = it })
         if (lines.isEmpty()) EmptyBlock("A transação não trouxe esta via", PtIcons.Receipt) else ReceiptView(lines)
+        if (!vm.hasPrinter) Banner("Terminal sem impressora", Tone.Info, "getDeviceSdk().printerSdk veio nulo: o comprovante sai por e-mail ou SMS.")
         Text("Charge.${if (via == 0) "merchantReceipt" else if (via == 1) "cardholderReceipt" else "merchantReceipt + cardholderReceipt"} → bitmap 384 px → IPrinterSdk.print",
             style = MonoStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

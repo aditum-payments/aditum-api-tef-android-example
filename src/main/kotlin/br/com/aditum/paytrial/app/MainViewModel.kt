@@ -94,6 +94,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var pendingCount by mutableStateOf(0); private set
     /** Chamada em curso fora de operação (consulta, confirmação, impressão…), para travar botões. */
     var busy by mutableStateOf<String?>(null); private set
+    /** Impressora no terminal (`getDeviceSdk().printerSdk != null`); sem ela, comprovante só por envio. */
+    var hasPrinter by mutableStateOf(true); private set
     /** Última `notification` do serviço, de qualquer chamada (tabelas, init…): a barra de processo mostra a mais recente. */
     var notice by mutableStateOf<PaymentEvent.Notification?>(null); private set
 
@@ -130,7 +132,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             when (val r = client.init(req)) {
                 is Res.Ok -> if (r.value.initialized) {
                     terminal = r.value.terminalInfo; brands = r.value.availableBrands.orEmpty()
-                    loadMerchant(); reset(Screen.Home); refreshPending()
+                    loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; reset(Screen.Home); refreshPending()
                     // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
                     r.value.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
                 } else initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"
