@@ -1,0 +1,39 @@
+package br.com.aditum.paytrial.app
+
+import br.com.aditum.data.v2.enums.CardBrand
+import br.com.aditum.data.v2.enums.ChargeStatus
+import br.com.aditum.data.v2.enums.InstallmentType
+import br.com.aditum.data.v2.enums.PayOperationType
+import br.com.aditum.data.v2.enums.PaymentType
+import br.com.aditum.data.v2.enums.PrintStatus
+import br.com.aditum.data.v2.enums.TransactionStatus
+import br.com.aditum.paytrial.designsystem.PtIcons
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/** Textos em pt-BR para os enums do contrato. */
+object Labels {
+    fun paymentType(t: PaymentType?) = when (t) { PaymentType.Credit -> "Crédito"; PaymentType.Debit -> "Débito"; PaymentType.Voucher -> "Voucher"; PaymentType.Pix -> "Pix"; PaymentType.Wallet -> "Carteira"; else -> "Indefinido" }
+    fun paymentIcon(t: PaymentType?) = when (t) { PaymentType.Credit -> PtIcons.Credit; PaymentType.Debit -> PtIcons.Debit; PaymentType.Voucher -> PtIcons.Voucher; PaymentType.Pix -> PtIcons.Pix; PaymentType.Wallet -> PtIcons.Wallet; else -> PtIcons.Sale }
+    fun installmentType(t: InstallmentType?) = when (t) { InstallmentType.None -> "À vista"; InstallmentType.Merchant -> "Loja"; InstallmentType.Issuer -> "Emissor"; else -> "À vista" }
+    fun operation(o: PayOperationType?) = when (o) { PayOperationType.Authorization -> "Venda"; PayOperationType.PreAuthorization -> "Pré-autorização"; PayOperationType.PreAuthorizationCapture -> "Captura"; PayOperationType.IncrementalPreAuthorization -> "Incremento"; else -> "Venda" }
+    fun chargeStatus(s: ChargeStatus?) = when (s) { ChargeStatus.Authorized -> "Autorizada"; ChargeStatus.PreAuthorized -> "Pré-autorizada"; ChargeStatus.Canceled -> "Cancelada"; ChargeStatus.Partial -> "Parcial"; ChargeStatus.NotAuthorized -> "Negada"; ChargeStatus.Pending -> "Aguardando confirmação"; ChargeStatus.PendingCancel -> "Cancelamento pendente"; ChargeStatus.Expired -> "Expirada"; else -> "Indefinido" }
+    fun brand(b: CardBrand?) = if (b == null || b == CardBrand.Undefined) "" else b.name.uppercase()
+    fun printStatus(s: PrintStatus?) = when (s) { PrintStatus.Ok -> "Impresso"; PrintStatus.OutOfPaper -> "Sem papel"; PrintStatus.Busy -> "Impressora ocupada"; PrintStatus.Overheat -> "Impressora superaquecida"; PrintStatus.MalFunctions -> "Falha na impressora"; PrintStatus.DataTooLarge -> "Comprovante grande demais"; else -> "Falha na impressão (${s?.name})" }
+
+    /** Título legível do passo, a partir do status da notificação (a mensagem do serviço vem embaixo). */
+    fun step(s: TransactionStatus?) = when (s) {
+        TransactionStatus.StartingTransaction -> "Iniciando"; TransactionStatus.ChargingTables -> "Carregando tabelas"; TransactionStatus.ValidatingOnline -> "Validando"
+        TransactionStatus.CheckCardEvent, TransactionStatus.WaitingCardEvent -> "Aguardando cartão"; TransactionStatus.WaitingTypedCard -> "Aguardando dados do cartão"
+        TransactionStatus.GettingPin -> "Senha"; TransactionStatus.ProcessingOnline -> "Autorizando"; TransactionStatus.ProcessingReversion -> "Desfazendo"
+        TransactionStatus.WaitingRemoveCard -> "Retire o cartão"; TransactionStatus.Canceled -> "Cancelada"; TransactionStatus.FinishingTransaction -> "Finalizando"
+        TransactionStatus.Finished -> "Concluída"; TransactionStatus.ValidatingNsu -> "Validando NSU"; TransactionStatus.WaitingQrcodeReading -> "Aguardando leitura do QR Code"
+        else -> "Processando"
+    }
+
+    /** "2026-09-23T09:46:10" → "23/09 09:46"; qualquer outro formato sai como veio. */
+    fun dateTime(iso: String?): String = iso?.let { s -> Regex("(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})").find(s)?.destructured?.let { (_, mo, d, h, mi) -> "$d/$mo $h:$mi" } ?: s } ?: ""
+    fun time(iso: String?): String = iso?.let { s -> Regex("[T ](\\d{2}:\\d{2})").find(s)?.groupValues?.get(1) ?: "" } ?: ""
+    fun dateTime(d: Date?): String = d?.let { SimpleDateFormat("dd/MM HH:mm", Locale("pt", "BR")).format(it) } ?: ""
+}

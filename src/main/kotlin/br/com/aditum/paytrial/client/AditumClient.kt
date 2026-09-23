@@ -156,7 +156,10 @@ class AditumClient(context: Context, val trace: TraceLog) {
             .onFailure { Log.w(TAG, "startService falhou: ${it.message}") }
         bound = runCatching { app.bindService(intent, connectionCallback, Context.BIND_AUTO_CREATE) }.getOrDefault(false)
         if (!bound) {
-            _connection.value = Connection.Unavailable("App2App da Aditum não encontrado neste terminal ($SERVICE_PACKAGE)")
+            // o mesmo pacote existe nas duas versões do app da Aditum; só a App2App expõe o serviço
+            val installed = runCatching { app.packageManager.getPackageInfo(SERVICE_PACKAGE, 0) }.isSuccess
+            _connection.value = Connection.Unavailable(if (installed) "O app da Aditum deste terminal é a versão standalone, sem o serviço App2App"
+                else "App2App da Aditum não instalado neste terminal ($SERVICE_PACKAGE)")
             scheduleReconnect()
         }
     }
