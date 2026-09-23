@@ -71,11 +71,14 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
     var byRef by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(prefill) }
     var found by remember { mutableStateOf<Charge?>(null) }
+    var pending by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }
     var send by remember { mutableStateOf(false) }
     fun search() = scope.launch {
-        msg = null; found = null
+        msg = null; found = null; pending = false
         when (val r = vm.findCharge(if (byRef) null else query, if (byRef) query else null)) { is Res.Ok -> if (r.value != null) found = r.value else msg = "Nenhuma transação encontrada"; is Res.Fail -> msg = r.message }
+        // Confirmar só faz sentido para o que ainda aguarda o integrador (`pendingTransactions`)
+        found?.nsu?.let { nsu -> pending = (vm.pendings() as? Res.Ok)?.value?.any { it.nsu == nsu } == true }
     }
     LaunchedEffect(Unit) { if (prefill.isNotBlank()) search() }
     PtScaffold("Consultar", onBack = { vm.pop() }) {
@@ -90,7 +93,10 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
         found?.let { c ->
             c.chargeStatus?.let { StatusTag(Labels.chargeStatus(it), if (it == ChargeStatus.Pending) Tone.Warning else Tone.Neutral) }
             KeyValueCard(listOf("Valor" to Money.brl(c.amount)) + chargeRows(c), MONO_KEYS)
-            ListRow("Confirmar", icon = PtIcons.Confirm, details = listOf("confirmTransaction"), onClick = { vm.confirm(c.nsu.orEmpty()) { ok -> if (ok) search() } })
+            if (pending) {
+                StatusTag("Aguardando confirmação do integrador", Tone.Warning)
+                ListRow("Confirmar", icon = PtIcons.Confirm, details = listOf("confirmTransaction"), onClick = { vm.confirm(c.nsu.orEmpty()) { search() } })
+            }
             ListRow("Reimprimir", icon = PtIcons.Print, onClick = { vm.push(Screen.Receipt(c)) })
             ListRow("Enviar comprovante", icon = PtIcons.Send, onClick = { send = true })
             ListRow("Cancelar", icon = PtIcons.Cancel, onClick = { vm.push(Screen.Cancel(c.nsu.orEmpty())) })
