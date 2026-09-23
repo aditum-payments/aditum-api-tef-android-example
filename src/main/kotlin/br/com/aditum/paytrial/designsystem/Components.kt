@@ -191,6 +191,18 @@ fun <T> ChipRow(options: List<Pair<T, String>>, selected: Set<T>, onToggle: (T) 
     }
 }
 
+/** Escolha única em chips que quebram linha: para listas longas (todos os valores de um enum do contrato). */
+@Composable
+fun <T> ChoiceChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        options.forEach { (v, label) ->
+            val on = v == selected
+            FilterChip(selected = on, onClick = { onSelect(v) }, label = { Text(label) }, shape = MaterialTheme.shapes.small,
+                leadingIcon = if (on) { { PtIcon(PtIcons.Check, size = 16.dp) } } else null)
+        }
+    }
+}
+
 /** Abas (Resumo | Requisição | Resposta). */
 @Composable
 fun PtTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {

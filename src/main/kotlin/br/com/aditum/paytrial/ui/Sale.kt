@@ -75,6 +75,7 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
     fun send() { if (settings.previewBeforeSend) preview = true else vm.startPay(request()) }
 
     PtScaffold("Pagamento", onBack = { vm.pop() }, actions = {
+        IconButton(onClick = { vm.push(Screen.FreeRequest(request())) }) { PtIcon(PtIcons.Edit, "Requisição livre") }
         if (settings.integrationMode) IconButton(onClick = { preview = true }) { PtIcon(PtIcons.Json, "Ver a requisição") }
     }, bottomBar = {
         PtButton("Pagar ${Money.brl(amount)}", ::send, Modifier.fillMaxWidth(), icon = PtIcons.Sale, enabled = error == null)

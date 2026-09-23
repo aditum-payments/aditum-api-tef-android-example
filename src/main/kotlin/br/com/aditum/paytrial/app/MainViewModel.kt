@@ -46,6 +46,8 @@ sealed interface Screen {
     data class Lookup(val nsu: String = "") : Screen { override val tag = "Consultar" }
     data object Confirm : Screen { override val tag = "Confirmar" }
     data object Report : Screen { override val tag = "Relatório" }
+    /** Requisição livre: qualquer combinação dos campos do `PaymentRequest`, sem validação ([base] = o pedido do Pagamento). */
+    data class FreeRequest(val base: PaymentRequest? = null) : Screen { override val tag = "Requisição livre" }
     data object More : Screen { override val tag = "Mais" }
     data object Developer : Screen { override val tag = "Desenvolvedor" }
     data object Console : Screen { override val tag = "Console" }

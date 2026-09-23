@@ -47,6 +47,7 @@ fun MoreScreen(vm: MainViewModel) {
         ListRow("Reconectar ao serviço", icon = PtIcons.Plug, details = listOf("unbind + bind"), onClick = { vm.reconnect() })
         ListRow("Desativar terminal", icon = PtIcons.Logout, details = listOf("deactivate · pede confirmação"), onClick = { deactivate = true })
         SectionLabel("Desenvolvedor")
+        ListRow("Requisição livre", icon = PtIcons.Edit, details = listOf("pay() com qualquer combinação de operação, forma e parcelamento, sem validação"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.FreeRequest()) })
         ListRow("Desenvolvedor", icon = PtIcons.Bug, details = listOf(if (settings.integrationMode) "Modo de integração ligado" else "Modo de integração desligado"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.Developer) })
         SectionLabel("Sobre")
         KeyValueCard(listOf("Aditum Pay Trial" to BuildConfig.VERSION_NAME, "Build" to BuildConfig.GIT_HASH, "Pacote" to BuildConfig.APPLICATION_ID,
