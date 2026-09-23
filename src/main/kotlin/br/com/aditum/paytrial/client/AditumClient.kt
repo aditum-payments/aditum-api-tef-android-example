@@ -4,9 +4,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import android.util.Log
 import br.com.aditum.IAditumSdkService
 import br.com.aditum.data.v2.IPaymentCallback
@@ -93,6 +95,7 @@ class AditumClient(context: Context, val trace: TraceLog) {
     companion object {
         const val SERVICE_PACKAGE = "br.com.aditum.smartpostef"
         const val SERVICE_ACTION = "br.com.aditum.AditumSdkService"
+        const val BIND_PERMISSION = "br.com.aditum.smartpostef.permission.BIND_TEF"
         private const val TAG = "PayTrial"
         private const val MIN = 60_000L
     }
@@ -142,7 +145,7 @@ class AditumClient(context: Context, val trace: TraceLog) {
             trace.callback("serviceDisconnected", screen, null)
         }
         override fun onBindingDied(name: ComponentName?) { service = null; scope.launch { unbindQuietly(); scheduleReconnect() } }
-        override fun onNullBinding(name: ComponentName?) { _connection.value = Connection.Unavailable("O serviço recusou a ligação (permissão BIND_TEF?)") }
+        override fun onNullBinding(name: ComponentName?) { _connection.value = Connection.Unavailable("O serviço recusou a ligação (onBind devolveu null).") }
     }
 
     /** Liga ao serviço e mantém ligado (religa sozinho se cair) até [disconnect]. */
@@ -154,13 +157,29 @@ class AditumClient(context: Context, val trace: TraceLog) {
         // o serviço é de primeiro plano: iniciar antes de ligar mantém-no vivo entre operações, como o app atual
         runCatching { if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(intent) else app.startService(intent) }
             .onFailure { Log.w(TAG, "startService falhou: ${it.message}") }
-        bound = runCatching { app.bindService(intent, connectionCallback, Context.BIND_AUTO_CREATE) }.getOrDefault(false)
+        val bind = runCatching { app.bindService(intent, connectionCallback, Context.BIND_AUTO_CREATE) }
+        bound = bind.getOrDefault(false)
         if (!bound) {
-            // o mesmo pacote existe nas duas versões do app da Aditum; só a App2App expõe o serviço
-            val installed = runCatching { app.packageManager.getPackageInfo(SERVICE_PACKAGE, 0) }.isSuccess
-            _connection.value = Connection.Unavailable(if (installed) "O app da Aditum deste terminal é a versão standalone, sem o serviço App2App"
-                else "App2App da Aditum não instalado neste terminal ($SERVICE_PACKAGE)")
+            _connection.value = Connection.Unavailable(diagnose(intent, bind.exceptionOrNull()))
             scheduleReconnect()
+        }
+    }
+
+    /**
+     * Por que a ligação falhou, na ordem em que um integrador tropeça: serviço ausente, app da Aditum na versão
+     * standalone (mesmo pacote, sem o serviço) ou permissão `BIND_TEF` não concedida. A permissão é criada pelo APK
+     * do serviço, e o Android não a concede a um app instalado **antes** dele: nesse caso só reinstalar o integrador.
+     */
+    private fun diagnose(intent: Intent, error: Throwable?): String {
+        val pm = app.packageManager
+        val installed = runCatching { pm.getPackageInfo(SERVICE_PACKAGE, 0) }.isSuccess
+        val retry = " Este app tenta de novo sozinho."
+        return when {
+            !installed -> "App2App da Aditum não instalado neste terminal ($SERVICE_PACKAGE). Instale o APK App2App.$retry"
+            pm.queryIntentServices(intent, 0).isEmpty() -> "O app da Aditum deste terminal é a versão standalone, sem o serviço App2App. Troque pelo APK App2App.$retry"
+            app.checkPermission(BIND_PERMISSION, Process.myPid(), Process.myUid()) != PackageManager.PERMISSION_GRANTED ->
+                "Sem a permissão BIND_TEF: este app foi instalado antes do App2App, e o Android não concede a permissão depois. Reinstale o Aditum Pay Trial."
+            else -> "O serviço recusou a ligação${error?.message?.let { " ($it)" } ?: ""}.$retry"
         }
     }
 

@@ -43,6 +43,10 @@ O APK sai em `build/dist/AditumPayTrial-3.0.0+<hash>-debug.apk`. De dentro do `a
 São dois APKs no terminal: o serviço da Aditum e este app. O app standalone da Aditum usa o mesmo pacote do
 serviço, então só um dos dois cabe no aparelho.
 
+**Instale o serviço primeiro.** A permissão `BIND_TEF` é criada pelo APK do serviço, e o Android não a concede a um
+app que já estava instalado antes dela existir. Se o integrador foi instalado antes, reinstale-o por cima
+(`adb install -r`); o banner da tela de conexão avisa quando é esse o caso. Vale para qualquer app integrador.
+
 ```bash
 adb install -r AditumPayTrial-3.0.0+<hash>-debug.apk
 ```
@@ -58,7 +62,7 @@ desenha as telas durante a operação:
 As mensagens do pinpad (`InitRequest.pinpadMessages`) ficam na mesma tela e valem nos dois modos.
 
 Se o banner disser *"versão standalone, sem o serviço App2App"*, o terminal tem o app standalone da Aditum no lugar
-do serviço.
+do serviço; *"Sem a permissão BIND_TEF"* é o caso da ordem de instalação acima.
 
 ## Checklist de integração
 

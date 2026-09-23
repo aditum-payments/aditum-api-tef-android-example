@@ -51,7 +51,7 @@ fun ConnectionBanner(c: AditumClient.Connection) = when (c) {
     AditumClient.Connection.Connected -> Banner("Serviço conectado", Tone.Success, AditumClient.SERVICE_PACKAGE)
     AditumClient.Connection.Connecting -> Banner("Conectando ao serviço…", Tone.Info, "Religa sozinho se o serviço cair.")
     AditumClient.Connection.Disconnected -> Banner("Serviço desconectado", Tone.Warning)
-    is AditumClient.Connection.Unavailable -> Banner("Serviço indisponível", Tone.Error, c.reason + ". Instale o APK App2App da Aditum; este app tenta de novo sozinho.")
+    is AditumClient.Connection.Unavailable -> Banner("Serviço indisponível", Tone.Error, c.reason)
 }
 
 /** Início: identidade do estabelecimento ativado, atalhos e as últimas vendas desta sessão. */
