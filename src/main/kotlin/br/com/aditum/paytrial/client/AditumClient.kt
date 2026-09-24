@@ -125,7 +125,12 @@ class AditumClient(context: Context, val trace: TraceLog) {
             trace.callback("onCardDetected", screen, ContractJson.redacted(event))
             event?.let { _cards.tryEmit(it) }
         }
+        override fun onCardRemovalRequired() { trace.callback("onCardRemovalRequired", screen, null); _cardRemoval.value = true }
+        override fun onCardRemoved() { trace.callback("onCardRemoved", screen, null); _cardRemoval.value = false }
     }
+    private val _cardRemoval = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** O serviço pede a retirada do chip que não virou venda; enquanto true, ele recusa operações ("RETIRE O CARTÃO"). */
+    val cardRemoval: kotlinx.coroutines.flow.StateFlow<Boolean> get() = _cardRemoval
     private val _prompt = MutableStateFlow<Prompt?>(null)
     val prompt: StateFlow<Prompt?> get() = _prompt
 

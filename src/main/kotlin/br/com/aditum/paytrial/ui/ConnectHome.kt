@@ -74,6 +74,9 @@ fun HomeScreen(vm: MainViewModel) {
     }) {
         TwoPane(first = {
         if (conn !is AditumClient.Connection.Connected) ConnectionBanner(conn)
+        val removing by vm.client.cardRemoval.collectAsState()
+        // chip da tela inicial saindo: o serviço recusa operações até onCardRemoved — a grade fica travada junto
+        if (removing) Banner("Retire o cartão do pinpad", Tone.Warning, "O serviço libera novas operações assim que o cartão sair.")
         // pinpad externo (TefSDK): o status dele no lugar de "Telas…"; em POS, com pinpad embutido, não faz sentido mostrar
         LaunchedEffect(Unit) { while (true) { vm.refreshTerminalStatus(traced = false); kotlinx.coroutines.delay(5_000) } }
         val status = vm.terminalStatus
@@ -82,8 +85,9 @@ fun HomeScreen(vm: MainViewModel) {
             pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(st.pinpadModel?.takeIf { it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
             screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum")
         ShortcutGrid(listOf(
-            Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true), Shortcut("cancel", "Cancelar", PtIcons.Cancel),
-            Shortcut("preauth", "Pré-autorização", PtIcons.PreAuth, enabled = m?.preAuthorizationEnabled == true),
+            // o que usa o pinpad espera o cartão sair; consultas e confirmação (só autorizador) seguem liberadas
+            Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true, enabled = !removing), Shortcut("cancel", "Cancelar", PtIcons.Cancel, enabled = !removing),
+            Shortcut("preauth", "Pré-autorização", PtIcons.PreAuth, enabled = m?.preAuthorizationEnabled == true && !removing),
             Shortcut("confirm", "Confirmar", PtIcons.Confirm, badge = vm.pendingCount), Shortcut("lookup", "Consultar", PtIcons.Lookup),
             Shortcut("report", "Relatório", PtIcons.Report), Shortcut("more", "Mais", PtIcons.More),
         )) { s ->
