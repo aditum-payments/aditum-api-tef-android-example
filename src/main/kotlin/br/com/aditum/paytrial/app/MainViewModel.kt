@@ -201,8 +201,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var pinpads by mutableStateOf<List<br.com.aditum.data.v2.model.PinpadDevice>?>(null); private set
     fun loadPinpads() = viewModelScope.launch { pinpads = null; pinpads = (client.listPinpads() as? Res.Ok)?.value.orEmpty(); refreshTerminalStatus() }
     fun choosePinpad(d: br.com.aditum.data.v2.model.PinpadDevice?) = viewModelScope.launch {
+        busy = "selectPinpad"
         val ok = (client.selectPinpad(d) as? Res.Ok)?.value == true
-        say(if (ok) "Pinpad escolhido: ${d?.name ?: "automático"} (vale na próxima operação)" else "O serviço não aceitou a escolha (operação em andamento ou serviço antigo)")
+        busy = null
+        say(if (ok) "Conectado ao pinpad ${d?.name ?: "(automático)"}" else "Não conectou em ${d?.name ?: "nenhum pinpad (automático)"}: confira se está ligado e perto. A escolha fica salva.")
         loadPinpads()
     }
     suspend fun refreshTerminalStatus(traced: Boolean = true) { terminalStatus = (client.terminalStatus(traced) as? Res.Ok)?.value }

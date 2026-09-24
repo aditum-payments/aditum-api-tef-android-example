@@ -29,14 +29,15 @@ fun PinpadScreen(vm: MainViewModel) {
                 listOfNotNull(now.pinpadTransport?.let { if (it == "BLUETOOTH") "Bluetooth" else "USB" }, now.pinpadName, now.pinpadModel, now.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ").ifBlank { "ainda não conectou nesta sessão" },
                 if (now.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb,
             )
-            Text("O automático usa o pinpad da USB e, sem ele, um Bluetooth pareado com nome de pinpad conhecido. Para outro aparelho Bluetooth, pareie nas Configurações do Android e escolha aqui.",
+            Text("Automático: o pinpad da USB; sem ele, um pinpad Bluetooth já pareado que responder à busca conecta sozinho. Qualquer outro aparelho da lista conecta quando você escolhe (não pareado: o Android pede o pareamento).",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }, second = {
             SectionLabel("Escolha")
+            if (vm.busy == "selectPinpad") { Text("Conectando… (Bluetooth não pareado: aceite o pareamento no Android)", style = MaterialTheme.typography.bodyMedium); LinearProgressIndicator(Modifier.fillMaxWidth()) }
             ListRow("Automático", icon = PtIcons.Refresh, details = listOf("selectPinpad(null)"),
                 trailing = { if (list != null && list.none { it.selected }) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = { vm.choosePinpad(null) })
             when {
-                list == null -> LinearProgressIndicator(Modifier.fillMaxWidth())
+                list == null -> { Text("Buscando aparelhos por perto… (até 15 s)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 list.isEmpty() -> Text("Nenhum pinpad na USB e nenhum aparelho Bluetooth pareado.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else -> list.forEach { d -> PinpadRow(d) { vm.choosePinpad(d) } }
             }
@@ -48,6 +49,7 @@ fun PinpadScreen(vm: MainViewModel) {
 private fun PinpadRow(d: PinpadDevice, onClick: () -> Unit) {
     val bt = d.transport == "BLUETOOTH"
     ListRow(d.name.ifBlank { d.id }, icon = if (bt) PtIcons.Bluetooth else PtIcons.Usb,
-        details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null, if (bt && !d.likelyPinpad) "nome não é de pinpad" else null).joinToString(" · ")),
+        details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
+            if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && !d.likelyPinpad) "nome não é de pinpad" else null).joinToString(" · ")),
         trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onClick)
 }
