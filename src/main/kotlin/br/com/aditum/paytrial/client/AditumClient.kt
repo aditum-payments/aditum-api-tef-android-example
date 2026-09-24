@@ -272,6 +272,8 @@ class AditumClient(context: Context, val trace: TraceLog) {
     suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
     suspend fun listPinpads(): Res<List<PinpadDevice>> = call("listPinpads", null, MIN + MIN / 2) { s, done -> done(s.listPinpads().orEmpty()) }
     suspend fun selectPinpad(d: PinpadDevice?): Res<Boolean> = call("selectPinpad", d, MIN + MIN / 2) { s, done -> done(s.selectPinpad(d)) }
+    suspend fun disconnectPinpad(d: PinpadDevice?): Res<Boolean> = call("disconnectPinpad", d, MIN / 2) { s, done -> done(s.disconnectPinpad(d)) }
+    suspend fun forgetPinpad(d: PinpadDevice): Res<Boolean> = call("forgetPinpad", d, MIN / 2) { s, done -> done(s.forgetPinpad(d)) }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }
     /** O terminal tem impressora? O contrato responde com `getDeviceSdk().printerSdk` nulo quando não tem. */
     suspend fun hasPrinter(): Res<Boolean> = call("getDeviceSdk", null, MIN / 2) { s, done -> done(s.deviceSdk?.printerSdk != null) }

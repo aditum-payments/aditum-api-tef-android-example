@@ -207,6 +207,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         say(if (ok) "Conectado ao pinpad ${d?.name ?: "(automático)"}" else "Não conectou em ${d?.name ?: "nenhum pinpad (automático)"}: confira se está ligado e perto. A escolha fica salva.")
         loadPinpads()
     }
+    fun disconnectPinpad(d: br.com.aditum.data.v2.model.PinpadDevice) = viewModelScope.launch {
+        val ok = (client.disconnectPinpad(d) as? Res.Ok)?.value == true
+        say(if (ok) "${d.name} desconectado: o automático não volta nele até você escolher de novo" else "Não deu para desconectar agora (operação em andamento ou serviço antigo)")
+        loadPinpads()
+    }
+    fun forgetPinpad(d: br.com.aditum.data.v2.model.PinpadDevice) = viewModelScope.launch {
+        val ok = (client.forgetPinpad(d) as? Res.Ok)?.value == true
+        say(if (ok) "${d.name} esquecido: o pareamento foi desfeito" else "O aparelho não deixou esquecer por aqui: nas Configurações de Bluetooth que abriram, toque nele e em Esquecer")
+        loadPinpads()
+    }
     suspend fun refreshTerminalStatus(traced: Boolean = true) { terminalStatus = (client.terminalStatus(traced) as? Res.Ok)?.value }
     fun reloadMerchant() = viewModelScope.launch { if (loadMerchant()) say("Estabelecimento recarregado") }
 

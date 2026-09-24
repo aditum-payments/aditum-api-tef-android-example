@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import br.com.aditum.data.v2.model.PinpadDevice
 import br.com.aditum.paytrial.app.MainViewModel
 import br.com.aditum.paytrial.designsystem.*
@@ -17,6 +18,7 @@ fun PinpadScreen(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.loadPinpads() }
     val list = vm.pinpads
     val status = vm.terminalStatus
+    var forget by remember { mutableStateOf<PinpadDevice?>(null) }
     PtScaffold("Pinpad", onBack = { vm.pop() }, wide = true, actions = {
         IconButton(onClick = { vm.loadPinpads() }) { PtIcon(PtIcons.Refresh, "Atualizar a lista") }
     }) {
@@ -39,17 +41,26 @@ fun PinpadScreen(vm: MainViewModel) {
             when {
                 list == null -> { Text("Buscando aparelhos por perto… (até 15 s)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 list.isEmpty() -> Text("Nenhum pinpad na USB e nenhum aparelho Bluetooth pareado.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                else -> list.forEach { d -> PinpadRow(d) { vm.choosePinpad(d) } }
+                else -> list.forEach { d -> PinpadRow(d, onConnect = { vm.choosePinpad(d) }, onDisconnect = { vm.disconnectPinpad(d) }, onForget = { forget = d }) }
             }
         })
     }
+    forget?.let { d -> PtDialog("Esquecer ${d.name}?", "O pareamento com este aparelho é desfeito no Android. Para usar de novo, é preciso parear outra vez.", "Esquecer",
+        onConfirm = { forget = null; vm.forgetPinpad(d) }, onDismiss = { forget = null }, destructive = true) }
 }
 
 @Composable
-private fun PinpadRow(d: PinpadDevice, onClick: () -> Unit) {
+private fun PinpadRow(d: PinpadDevice, onConnect: () -> Unit, onDisconnect: () -> Unit, onForget: () -> Unit) {
     val bt = d.transport == "BLUETOOTH"
-    ListRow(d.name.ifBlank { d.id }, icon = if (bt) PtIcons.Bluetooth else PtIcons.Usb,
-        details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
-            if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && !d.likelyPinpad) "nome não é de pinpad" else null).joinToString(" · ")),
-        trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onClick)
+    Column {
+        ListRow(d.name.ifBlank { d.id }, icon = if (bt) PtIcons.Bluetooth else PtIcons.Usb,
+            details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
+                if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && !d.likelyPinpad) "nome não é de pinpad" else null).joinToString(" · ")),
+            trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onConnect)
+        // conectar é tocar na linha; desconectar vale para o escolhido/conectado; esquecer, para Bluetooth pareado
+        if (bt && (d.connected || d.selected || d.paired)) Row(Modifier.fillMaxWidth().padding(start = 56.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (d.connected || d.selected) TextButton(onClick = onDisconnect) { Text("Desconectar") }
+            if (d.paired) TextButton(onClick = onForget) { Text("Esquecer", color = MaterialTheme.colorScheme.error) }
+        }
+    }
 }
