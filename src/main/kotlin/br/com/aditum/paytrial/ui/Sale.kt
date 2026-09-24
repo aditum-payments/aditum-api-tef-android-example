@@ -109,8 +109,9 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
 
 @Composable
 private fun OptionTiles(options: List<PaymentOption>, selected: PaymentOption?, onSelect: (PaymentOption) -> Unit) {
+    val cols = LocalWidthClass.current.optionColumns
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.chunked(3).forEach { row ->
+        options.chunked(cols).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { o ->
                     val on = o.key == selected?.key
@@ -124,7 +125,7 @@ private fun OptionTiles(options: List<PaymentOption>, selected: PaymentOption?, 
                             color = if (on) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

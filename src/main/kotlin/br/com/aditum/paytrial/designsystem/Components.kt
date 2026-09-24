@@ -68,11 +68,16 @@ fun PtScaffold(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
-        bottomBar = { if (bottomBar != null) Surface(color = MaterialTheme.colorScheme.surface) { Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) { bottomBar() } } },
+        bottomBar = { if (bottomBar != null) Surface(color = MaterialTheme.colorScheme.surface) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(Modifier.widthIn(max = LocalWidthClass.current.contentMaxWidth).fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) { bottomBar() }
+            }
+        } },
         snackbarHost = { if (snackbarHost != null) SnackbarHost(snackbarHost) { PtSnackbar(it.visuals.message) } },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            val base = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+            // em tablet a coluna fica centralizada e com largura máxima; no celular ocupa a tela
+            val base = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = LocalWidthClass.current.contentMaxWidth).fillMaxWidth().padding(horizontal = 16.dp)
             Column(if (scroll) base.verticalScroll(rememberScrollState()) else base, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(Modifier.height(4.dp)); content(); Spacer(Modifier.height(if (floating != null) 88.dp else 16.dp))
             }
@@ -238,8 +243,9 @@ data class Shortcut(val id: String, val label: String, val icon: ImageVector, va
 /** Grade de atalhos em 3 colunas; o atalho em destaque ocupa duas. */
 @Composable
 fun ShortcutGrid(items: List<Shortcut>, onSelect: (Shortcut) -> Unit) {
+    val cols = LocalWidthClass.current.shortcutColumns
     val rows = mutableListOf<MutableList<Shortcut>>(); var used = 0
-    items.forEach { s -> val w = if (s.highlight) 2 else 1; if (rows.isEmpty() || used + w > 3) { rows.add(mutableListOf()); used = 0 }; rows.last().add(s); used += w }
+    items.forEach { s -> val w = if (s.highlight) 2 else 1; if (rows.isEmpty() || used + w > cols) { rows.add(mutableListOf()); used = 0 }; rows.last().add(s); used += w }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -257,7 +263,7 @@ fun ShortcutGrid(items: List<Shortcut>, onSelect: (Shortcut) -> Unit) {
                             modifier = Modifier.align(Alignment.TopEnd).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.error).padding(horizontal = 6.dp))
                     }
                 }
-                repeat(3 - row.sumOf { if (it.highlight) 2 else 1 }) { Spacer(Modifier.weight(1f)) }
+                repeat(cols - row.sumOf { if (it.highlight) 2 else 1 }) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -420,7 +426,8 @@ fun AmountDisplay(amountCents: Long, label: String = "Valor", error: String? = n
 @Composable
 fun AmountKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit, onClear: () -> Unit) {
     val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "⌫")
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // em tablet o teclado não passa de 480 dp (teclas largas demais atrapalham), centralizado
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) { Column(Modifier.widthIn(max = 480.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         keys.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { k ->
@@ -432,7 +439,7 @@ fun AmountKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit, onClear: ()
             }
         }
         TextButton(onClick = onClear, modifier = Modifier.align(Alignment.End)) { Text("Limpar") }
-    }
+    } }
 }
 
 // ---------------------------------------------------------------- sobreposições

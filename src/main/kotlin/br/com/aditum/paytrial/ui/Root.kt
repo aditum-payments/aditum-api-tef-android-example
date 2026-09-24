@@ -71,9 +71,10 @@ fun PayTrialRoot(vm: MainViewModel) {
         LaunchedEffect(first?.id) { if (first == null) shown = null else { delay(300); shown = first } }
         val notice = vm.notice
         val bar = shown
+        val barWidth = Modifier.widthIn(max = LocalWidthClass.current.contentMaxWidth)
         if (bar != null && first != null) ProcessBar(Labels.callTitle(bar.method), notice?.takeIf { it.at >= bar.startedAt }?.message, bar.method, running.size - 1,
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp))
-        else SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp)) { PtSnackbar(it.visuals.message) }
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp).then(barWidth))
+        else SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 76.dp).then(barWidth)) { PtSnackbar(it.visuals.message) }
     }
     // pedidos do serviço com "Telas do integrador": uma folha nova a cada pedido (sem herdar o texto do anterior)
     prompt?.let { p -> key(p) { PromptSheet(p, onAbortOperation = { vm.abort() }) } }
