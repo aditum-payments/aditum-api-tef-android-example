@@ -25,18 +25,38 @@ Requer JDK 17 (o Gradle baixa um se não houver) e o Android SDK (`local.propert
 `ANDROID_HOME`).
 
 ```bash
-./gradlew assembleDebug
+./gradlew assembleDebug -Ppaytrial.device=P2
 ```
 
-O APK sai em `build/dist/AditumPayTrial-3.0.0+<hash>-debug.apk`. De dentro do `aditum-tef`, o mesmo build é
-`./gradlew -p sdk/example assembleDebug` ou `scripts/build-all.sh --no-android --example`.
+**Um APK por dispositivo, como o serviço.** O nome segue o do APK de serviço:
+`build/dist/AditumPayTrial-A2A-<D|P>-<MODELO>-3.0.0+<hash>-<tipo>.apk`.
+
+- `-Ppaytrial.device=<MODELO>` (ou `PAYTRIAL_DEVICE`): o alvo — `GPOS760`, `GPOS720`, `GPOS700X`, `GPOS700MINI`,
+  `GPOS700`, `A910`, `P2`, `DX8000`, `L3`, `L3_2024`, `L400`, `X990`, `X990UX` ou `TEFSDK` — ou um apelido do hardware
+  (`P2MINI`, `A910S`, `EX4000`, `L300`…). Ele escolhe a **chave de assinatura do fabricante** e entra no nome. Sem ele,
+  o APK sai como `ANY`, com a chave de debug. Dispositivo desconhecido falha o build com a lista.
+- `-Ppaytrial.environment=development|production` (ou `ENVIRONMENT`): `D` ou `P` no nome. Produção exige o token de
+  produção (abaixo); com o de desenvolvimento, o build falha.
+
+A tabela dispositivo → chave espelha a matriz de modelos do `aditum-tef` (`build-matrix/.../Devices.kt`); o
+`scripts/sync-example-aar.sh --check` acusa quando as duas divergem. De dentro do `aditum-tef`, o mesmo build é
+`./gradlew -p sdk/example assembleDebug -Ppaytrial.device=P2`, ou `scripts/build-all.sh --no-android --example`, que
+monta um por dispositivo nos mesmos `--family`/`--model`/`--type` do Android.
 
 **Token do integrador** (`InitRequest.applicationToken`): `-Ppaytrial.token=…`, variável `PAYTRIAL_TOKEN` ou
 `paytrial.token` em `gradle.properties`. O valor versionado (`paytrial-dev-token`) só serve em desenvolvimento.
 
-**Assinatura com a chave do fabricante** (terminais que só instalam APK assinado):
-`-Ppaytrial.keystore=/caminho/arquivo.jks`, com as senhas em `PAYTRIAL_STORE_PASSWORD`, `PAYTRIAL_KEY_ALIAS` e
-`PAYTRIAL_KEY_PASSWORD`. Sem isso, sai com a chave de debug.
+**Assinatura**, com as mesmas regras e os mesmos segredos do serviço:
+- o **release** sai com a chave do dispositivo: o `.jks` em `-Ppaytrial.signing.dir` (padrão: `certs/` do `aditum-tef`,
+  dois níveis acima) e as senhas em `ADITUM_SIGNING_<CHAVE>_STORE` / `_KEY` / `_ALIAS` (ex.:
+  `ADITUM_SIGNING_GERTEC_GPOS760_STORE`) ou `-Ppaytrial.signing.<chave>.storePassword`;
+- sem a chave, fora do CI o release sai com a chave de debug e um aviso; no CI (`CI`/`TF_BUILD`, ou
+  `-Ppaytrial.signing.strict=true`) o build falha;
+- o **debug** usa sempre a chave de debug, como o terminal;
+- `-Ppaytrial.keystore=/caminho.jks` com `PAYTRIAL_STORE_PASSWORD`, `PAYTRIAL_KEY_ALIAS` e `PAYTRIAL_KEY_PASSWORD` (um
+  `.jks` só) vence a tabela.
+
+O dispositivo e o ambiente do build aparecem em **Mais › Sobre**.
 
 ## Instalar e testar
 
@@ -48,7 +68,7 @@ app que já estava instalado antes dela existir. Se o integrador foi instalado a
 (`adb install -r`); o banner da tela de conexão avisa quando é esse o caso. Vale para qualquer app integrador.
 
 ```bash
-adb install -r AditumPayTrial-3.0.0+<hash>-debug.apk
+adb install -r AditumPayTrial-A2A-D-P2-3.0.0+<hash>-debug.apk
 ```
 
 Na primeira tela informe o código de ativação do estabelecimento e toque **Iniciar**. Ali também se escolhe quem
