@@ -46,7 +46,7 @@ fun ResultScreen(vm: MainViewModel, onRaw: (Long, Int) -> Unit) {
         r.undone -> "Venda desfeita"; !r.approved -> if (isPay) "Pagamento negado" else "Cancelamento negado"
         !isPay -> "Cancelamento aprovado"; r.confirmed -> "Pagamento confirmado"; else -> "Pagamento aprovado"
     }
-    PtScaffold(title, onClose = { vm.home() }, bottomBar = { ResultActions(vm, r, onUndo = { undoAsk = true }) }) {
+    PtScaffold(title, onClose = { vm.home() }, bottomBar = { ResultFooter(vm) }) {
         if (settings.integrationMode && r.traceId != null) PtTabs(listOf("Resumo", "Requisição", "Resposta"), tab) { if (it > 0) onRaw(r.traceId, it - 1) }   // as abas cruas abrem o par requisição/resposta
         ResultHero(r)
         when {
@@ -63,11 +63,8 @@ fun ResultScreen(vm: MainViewModel, onRaw: (Long, Int) -> Unit) {
                 }
             }
             KeyValueCard(chargeRows(c), MONO_KEYS)
-            if (r.approved && !r.undone) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PtButton(if (vm.hasPrinter) "Imprimir" else "Comprovante", { vm.push(Screen.Receipt(c)) }, Modifier.weight(1f), PtButtonKind.Tonal, if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt)
-                PtButton("Enviar", { send = true }, Modifier.weight(1f), PtButtonKind.Tonal, PtIcons.Send)
-            }
         }
+        SaleActions(vm, r, onSend = { send = true }, onUndo = { undoAsk = true })
     }
     if (send && c != null) SendReceiptSheet(vm, c) { send = false }
     if (undoAsk && c != null) PtDialog("Desfazer a venda?", "A venda de ${Money.brl(c.amount)} é desfeita no autorizador (desfazimento) e não será cobrada.", "Desfazer",
@@ -90,24 +87,43 @@ private fun ResultHero(r: ResultState) {
     }
 }
 
-/** Rodapé do resultado: Desfazer/Confirmar enquanto não confirmada; Cancelar/Nova venda depois; Tentar de novo se negada. */
+/**
+ * Ações **desta venda**, juntas logo abaixo dos dados dela: comprovante (imprimir e enviar, só o ícone) e o que o
+ * integrador faz com a transação — Desfazer e Confirmar enquanto ela aguarda confirmação, Cancelar depois; Tentar de
+ * novo quando foi negada. O rodapé fica só com a navegação do app, para não se confundir com elas.
+ */
 @Composable
-private fun ResultActions(vm: MainViewModel, r: ResultState, onUndo: () -> Unit) {
+private fun SaleActions(vm: MainViewModel, r: ResultState, onSend: () -> Unit, onUndo: () -> Unit) {
     val c = r.charge
     val busy = vm.busy != null
-    when {
-        r.kind == OpKind.PAY && r.approved && !r.undone && !r.confirmed && c != null -> ActionRow(
-            secondary = { PtButton("Desfazer", onUndo, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Undo, enabled = !busy) },
-            primary = { PtButton("Confirmar", { vm.confirm(c.nsu.orEmpty()) }, Modifier.weight(1f), icon = PtIcons.Confirm, enabled = !busy) })
-        r.kind == OpKind.PAY && r.approved && !r.undone && c != null -> ActionRow(
-            secondary = { PtButton("Cancelar", { vm.push(Screen.Cancel(c.nsu.orEmpty())) }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Cancel) },
-            primary = { PtButton("Nova venda", { vm.home(); vm.push(Screen.Amount()) }, Modifier.weight(1f), icon = PtIcons.Sale) })
-        r.kind == OpKind.PAY && !r.approved && r.paymentRequest != null -> ActionRow(
-            secondary = { PtButton("Tentar de novo", { vm.startPay(r.paymentRequest.copy(merchantChargeId = vm.newChargeId())) }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Refresh) },
-            primary = { PtButton("Voltar ao início", { vm.home() }, Modifier.weight(1f), icon = PtIcons.Home) })
-        else -> PtButton("Voltar ao início", { vm.home() }, Modifier.fillMaxWidth(), icon = PtIcons.Home)
+    val isPay = r.kind == OpKind.PAY
+    val live = r.approved && !r.undone && c != null
+    val retry = isPay && !r.approved && r.paymentRequest != null
+    if (!live && !retry) return
+    SectionLabel("Esta venda")
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (live && c != null) {
+            PtIconButton(if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt, if (vm.hasPrinter) "Imprimir o comprovante" else "Ver o comprovante", { vm.push(Screen.Receipt(c)) })
+            PtIconButton(PtIcons.Send, "Enviar o comprovante", onSend)
+            when {
+                isPay && !r.confirmed -> {
+                    PtButton("Desfazer", onUndo, Modifier.weight(1f), PtButtonKind.Outlined, enabled = !busy)
+                    PtButton("Confirmar", { vm.confirm(c.nsu.orEmpty()) }, Modifier.weight(1f), PtButtonKind.Tonal, enabled = !busy)
+                }
+                isPay -> PtButton("Cancelar venda", { vm.push(Screen.Cancel(c.nsu.orEmpty())) }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Cancel)
+                else -> Spacer(Modifier.weight(1f))
+            }
+        } else if (retry && r.paymentRequest != null) {
+            PtButton("Tentar de novo", { vm.startPay(r.paymentRequest.copy(merchantChargeId = vm.newChargeId())) }, Modifier.fillMaxWidth(), PtButtonKind.Outlined, PtIcons.Refresh, enabled = !busy)
+        }
     }
 }
+
+/** Rodapé do resultado: só a navegação do app — Finalizar (volta ao início) e Nova venda. */
+@Composable
+private fun ResultFooter(vm: MainViewModel) = ActionRow(
+    secondary = { PtButton("Finalizar", { vm.home() }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Home) },
+    primary = { PtButton("Nova venda", { vm.home(); vm.push(Screen.Amount()) }, Modifier.weight(1f), icon = PtIcons.Sale) })
 
 /** Comprovante: via em botões divididos, prévia no papel, Imprimir pelo `IPrinterSdk` ou Enviar. */
 @Composable

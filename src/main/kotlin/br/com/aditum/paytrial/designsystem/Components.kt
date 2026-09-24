@@ -94,6 +94,15 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) =
 
 enum class PtButtonKind { Primary, Tonal, Outlined, Text, Danger }
 
+/** Botão só com ícone, do mesmo tamanho e cor do tonal: para ações secundárias que o ícone já diz (imprimir, enviar). */
+@Composable
+fun PtIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    FilledTonalIconButton(onClick, modifier.size(48.dp), enabled, shape = MaterialTheme.shapes.medium,
+        colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+        PtIcon(icon, contentDescription, size = 22.dp)
+    }
+}
+
 /** Botão do design system: 48 dp de altura, cantos de 6 dp, ícone opcional à esquerda. */
 @Composable
 fun PtButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: PtButtonKind = PtButtonKind.Primary, icon: ImageVector? = null, enabled: Boolean = true) {
