@@ -51,6 +51,7 @@ sealed interface Screen {
     /** Requisição livre: qualquer combinação dos campos do `PaymentRequest`, sem validação ([base] = o pedido do Pagamento). */
     data class FreeRequest(val base: PaymentRequest? = null) : Screen { override val tag = "Requisição livre" }
     data object More : Screen { override val tag = "Mais" }
+    data object Pinpad : Screen { override val tag = "Pinpad" }
     data object Developer : Screen { override val tag = "Desenvolvedor" }
     data object Console : Screen { override val tag = "Console" }
 }
@@ -195,6 +196,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun loadCustomization() {
         val c = (client.merchantCustomization() as? Res.Ok)?.value
         merchantLogo = c?.logo?.let { runCatching { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
+    }
+    /** Pinpads externos (TefSDK, 3.0.0): null = carregando; vazio = nada na USB nem pareado (ou serviço antigo). */
+    var pinpads by mutableStateOf<List<br.com.aditum.data.v2.model.PinpadDevice>?>(null); private set
+    fun loadPinpads() = viewModelScope.launch { pinpads = null; pinpads = (client.listPinpads() as? Res.Ok)?.value.orEmpty(); refreshTerminalStatus() }
+    fun choosePinpad(d: br.com.aditum.data.v2.model.PinpadDevice?) = viewModelScope.launch {
+        val ok = (client.selectPinpad(d) as? Res.Ok)?.value == true
+        say(if (ok) "Pinpad escolhido: ${d?.name ?: "automático"} (vale na próxima operação)" else "O serviço não aceitou a escolha (operação em andamento ou serviço antigo)")
+        loadPinpads()
     }
     suspend fun refreshTerminalStatus(traced: Boolean = true) { terminalStatus = (client.terminalStatus(traced) as? Res.Ok)?.value }
     fun reloadMerchant() = viewModelScope.launch { if (loadMerchant()) say("Estabelecimento recarregado") }

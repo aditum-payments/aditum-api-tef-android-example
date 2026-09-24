@@ -22,7 +22,7 @@ ICONS = {
     "Undo": ("arrow-back-up", False), "Refresh": ("refresh", False), "Credit": ("credit-card", False),
     "Debit": ("building-bank", False), "Voucher": ("ticket", False), "Pix": ("qrcode", False), "Wallet": ("wallet", False),
     "Contactless": ("nfc", False), "Store": ("building-store", False), "Person": ("user", False), "Lock": ("lock", False),
-    "Terminal": ("device-mobile", False), "Tables": ("download", False), "Logout": ("logout", False),
+    "Terminal": ("device-mobile", False), "Bluetooth": ("bluetooth", False), "Usb": ("usb", False), "Tables": ("download", False), "Logout": ("logout", False),
     "Success": ("circle-check", False), "Info": ("info-circle", False), "Warning": ("alert-triangle", False),
     "Error": ("circle-x", False), "Pending": ("hourglass", False), "Console": ("file-code", False), "Json": ("code-circle", False),
     "Bug": ("bug", False), "Home": ("home", False), "Filter": ("filter", False), "Calendar": ("calendar", False),

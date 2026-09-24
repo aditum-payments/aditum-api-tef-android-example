@@ -18,6 +18,7 @@ import br.com.aditum.data.v2.enums.TransactionStatus
 import br.com.aditum.data.v2.model.Charge
 import br.com.aditum.data.v2.model.MerchantCustomization
 import br.com.aditum.data.v2.model.MerchantData
+import br.com.aditum.data.v2.model.PinpadDevice
 import br.com.aditum.data.v2.model.TerminalStatus
 import br.com.aditum.data.v2.model.callbacks.GetClearDataFinishedCallback
 import br.com.aditum.data.v2.model.callbacks.GetClearDataRequest
@@ -159,7 +160,9 @@ class AditumClient(context: Context, val trace: TraceLog) {
         // o serviço é de primeiro plano: iniciar antes de ligar mantém-no vivo entre operações, como o app atual
         runCatching { if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(intent) else app.startService(intent) }
             .onFailure { Log.w(TAG, "startService falhou: ${it.message}") }
-        val bind = runCatching { app.bindService(intent, connectionCallback, Context.BIND_AUTO_CREATE) }
+        // Android 14+: o serviço só abre uma tela (pedido de permissão do pinpad Bluetooth) se quem está visível e fez o bind deixar
+            val flags = Context.BIND_AUTO_CREATE or (if (android.os.Build.VERSION.SDK_INT >= 34) Context.BIND_ALLOW_ACTIVITY_STARTS else 0)
+            val bind = runCatching { app.bindService(intent, connectionCallback, flags) }
         bound = bind.getOrDefault(false)
         if (!bound) {
             _connection.value = Connection.Unavailable(diagnose(intent, bind.exceptionOrNull()))
@@ -267,6 +270,8 @@ class AditumClient(context: Context, val trace: TraceLog) {
      */
     suspend fun merchantCustomization(): Res<MerchantCustomization?> = call("getMerchantCustomization", null, MIN / 2) { s, done -> done(s.merchantCustomization) }
     suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
+    suspend fun listPinpads(): Res<List<PinpadDevice>> = call("listPinpads", null, MIN + MIN / 2) { s, done -> done(s.listPinpads().orEmpty()) }
+    suspend fun selectPinpad(d: PinpadDevice?): Res<Boolean> = call("selectPinpad", d, MIN / 4) { s, done -> done(s.selectPinpad(d)) }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }
     /** O terminal tem impressora? O contrato responde com `getDeviceSdk().printerSdk` nulo quando não tem. */
     suspend fun hasPrinter(): Res<Boolean> = call("getDeviceSdk", null, MIN / 2) { s, done -> done(s.deviceSdk?.printerSdk != null) }

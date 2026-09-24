@@ -37,6 +37,10 @@ fun ConnectScreen(vm: MainViewModel) {
         else Segmented(listOf(false to "Telas da Aditum", true to "Telas do integrador"), settings.integratorScreens, { v -> vm.settings.update { it.copy(integratorScreens = v) } })
         if (vm.aditumScreensAvailable) Text(if (settings.integratorScreens) "Este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true)." else "O app da Aditum abre por cima durante a operação e fecha no fim (useOnlySdk = false).",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // TefSDK: o pinpad (USB ou Bluetooth pareado) pode ser escolhido antes do init — sem ele o init nem abre o pinpad
+        LaunchedEffect(conn) { if (conn is AditumClient.Connection.Connected) vm.refreshTerminalStatus(traced = false) }
+        if (vm.terminalStatus?.externalPinpad == true) ListRow("Pinpad", icon = if (vm.terminalStatus?.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb,
+            details = listOf("USB ou Bluetooth pareado · automático se nada for escolhido"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.Pinpad) })
         ListRow("Mensagens do pinpad", icon = PtIcons.Terminal, details = listOf(settings.mainMessage.ifBlank { "Logo ou nome do estabelecimento" }), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { messages = true })
         vm.initError?.let { Banner("Não foi possível iniciar", Tone.Error, it) }
         if (vm.initializing) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -77,7 +81,7 @@ fun HomeScreen(vm: MainViewModel) {
         val status = vm.terminalStatus
         MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model?.ifBlank { null }).joinToString(" · ").ifBlank { "Terminal ativado" },
             vm.merchantLogo,
-            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(st.pinpadModel?.takeIf { it.isNotBlank() && it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
+            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(if (st.pinpadTransport == "BLUETOOTH") "Bluetooth" + (st.pinpadName?.let { " $it" } ?: "") else null, st.pinpadModel?.takeIf { it.isNotBlank() && it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
             screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum")
         ShortcutGrid(listOf(
             Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true), Shortcut("cancel", "Cancelar", PtIcons.Cancel),

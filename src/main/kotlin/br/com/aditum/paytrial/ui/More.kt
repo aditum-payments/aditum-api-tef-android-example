@@ -44,6 +44,8 @@ fun MoreScreen(vm: MainViewModel) {
         }
         }, second = {
         SectionLabel("Operações")
+        if (vm.terminalStatus?.externalPinpad == true) ListRow("Pinpad", icon = if (vm.terminalStatus?.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb,
+            details = listOf("listPinpads · selectPinpad · USB ou Bluetooth pareado"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.Pinpad) })
         ListRow("Atualizar tabelas", icon = PtIcons.Tables, details = listOf("updateEmvTables"), onClick = { vm.updateTables() })
         ListRow("Recarregar estabelecimento", icon = PtIcons.Refresh, details = listOf("getMerchantData"), onClick = { vm.reloadMerchant() })
         ListRow("Reconectar ao serviço", icon = PtIcons.Plug, details = listOf("unbind + bind"), onClick = { vm.reconnect() })

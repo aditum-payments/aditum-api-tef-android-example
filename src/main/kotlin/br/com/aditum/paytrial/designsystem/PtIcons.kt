@@ -77,6 +77,10 @@ object PtIcons {
     val Lock: ImageVector by lazy { icon("Lock", LINE, "M5 13 a2 2 0 0 1 2 -2 h10 a2 2 0 0 1 2 2 v6 a2 2 0 0 1 -2 2 h-10 a2 2 0 0 1 -2 -2 v-6", "M11 16 a1 1 0 1 0 2 0 a1 1 0 0 0 -2 0", "M8 11 v-4 a4 4 0 1 1 8 0 v4") }
     /** Tabler `device-mobile` (linha). */
     val Terminal: ImageVector by lazy { icon("Terminal", LINE, "M6 5 a2 2 0 0 1 2 -2 h8 a2 2 0 0 1 2 2 v14 a2 2 0 0 1 -2 2 h-8 a2 2 0 0 1 -2 -2 v-14", "M11 4 h2", "M12 17 v0.01") }
+    /** Tabler `bluetooth` (linha). */
+    val Bluetooth: ImageVector by lazy { icon("Bluetooth", LINE, "M7 8 l10 8 l-5 4 l0 -16 l5 4 l-10 8") }
+    /** Tabler `usb` (linha). */
+    val Usb: ImageVector by lazy { icon("Usb", LINE, "M10 19 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0", "M12 17 v-11.5", "M7 10 v3 l5 3", "M12 14.5 l5 -2 v-2.5", "M16 10 h2 v-2 h-2 z", "M6 9 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0", "M10 5.5 h4 l-2 -2.5 z") }
     /** Tabler `download` (linha). */
     val Tables: ImageVector by lazy { icon("Tables", LINE, "M4 17 v2 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2 -2 v-2", "M7 11 l5 5 l5 -5", "M12 4 l0 12") }
     /** Tabler `logout` (linha). */
