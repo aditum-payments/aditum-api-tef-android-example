@@ -116,6 +116,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { client.events.collect { e -> if (e is PaymentEvent.Notification) notice = e; onEvent(e) } }
+        viewModelScope.launch { client.cards.collect(::onCardPresented) }
         client.screen = current.tag
         // o serviço voltou sozinho (reinstalado, morto pelo sistema, atualizado): um serviço novo não sabe de nada, então
         // o init sai de novo, com os mesmos dados do último que deu certo — mesmo token, código e modo de telas, para
@@ -192,6 +193,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun loadMerchant(): Boolean = when (val r = client.merchantData()) { is Res.Ok -> { merchant = r.value; true }; is Res.Fail -> { say(r.message); false } }
+    // ---------------------------------------------------------------- cartão antes da venda (3.0.0)
+
+    /** Cartão apresentado na tela inicial e guardado pelo serviço para a próxima venda. */
+    var presentedCard by mutableStateOf<br.com.aditum.data.v2.model.callbacks.CardEvent?>(null); private set
+
+    /** Tela inicial à vista: escuta o cartão, como a home do standalone. Recomeçar descarta o cartão que não virou venda. */
+    fun startCardListening() { presentedCard = null; client.startCardListener() }
+    /** Saiu da tela inicial sem cartão: para a escuta (com cartão, ele segue guardado para a venda). */
+    fun stopCardListening() { if (presentedCard == null) client.stopCardListener() }
+
+    private fun onCardPresented(e: br.com.aditum.data.v2.model.callbacks.CardEvent) {
+        if (!e.supported) { say("Cartão não aceito por este estabelecimento. Retire o cartão."); return }
+        presentedCard = e
+        if (current is Screen.Home) push(Screen.Amount())
+    }
+
     suspend fun loadCustomization() {
         val c = (client.merchantCustomization() as? Res.Ok)?.value
         merchantLogo = c?.logo?.let { runCatching { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
@@ -206,6 +223,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun newChargeId(): String = "PED-" + UUID.randomUUID().toString().substring(0, 8).uppercase()
 
     fun startPay(req: PaymentRequest) {
+        presentedCard = null   // o serviço entrega o cartão guardado a este pay
         op = OpState(OpKind.PAY, req.amount, Labels.operation(req.operationType))
         push(Screen.Operation)
         viewModelScope.launch {

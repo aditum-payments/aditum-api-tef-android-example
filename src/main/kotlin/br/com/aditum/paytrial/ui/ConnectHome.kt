@@ -67,6 +67,8 @@ fun HomeScreen(vm: MainViewModel) {
     val conn by vm.client.connection.collectAsState()
     val m = vm.merchant
     LaunchedEffect(Unit) { vm.refreshPending() }
+    // chip inserido ou tarja passada aqui já abre a venda, e o serviço usa esse cartão (contrato 3.0.0; no 2.x nada muda)
+    DisposableEffect(Unit) { vm.startCardListening(); onDispose { vm.stopCardListening() } }
     PtScaffold(m?.fantasyName?.ifBlank { null } ?: "Aditum Pay Trial", wide = true, actions = {
         if (settings.integrationMode) IconButton(onClick = { vm.push(Screen.Console) }) { PtIcon(PtIcons.Console, "Console de eventos") }
     }) {
