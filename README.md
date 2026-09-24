@@ -110,9 +110,6 @@ O que este app faz e que todo integrador precisa fazer (ver `client/AditumClient
 8. **Opcionais do 3.0.0** (no fim da interface; serviço 2.x responde `null`): `getMerchantCustomization()` traz o logo
    e as cores do estabelecimento — sem logo, use o seu (o Pay Trial usa o da Aditum, como o standalone) —; e
    `getTerminalStatus()` diz se há pinpad externo (TefSDK) e se ele está plugado.
-9. **Cartão antes da venda (3.0.0, opcional):** `startCardListener(callback)` enquanto a tela inicial do app está
-   aberta; chip inserido ou tarja passada chegam em `onCardDetected` e o próximo `pay` usa esse cartão, sem pedir de
-   novo. `stopCardListener()` ao sair da tela. Sem chamar, nada muda (o serviço não escuta cartão sozinho).
 
 ## Dados crus e censura
 

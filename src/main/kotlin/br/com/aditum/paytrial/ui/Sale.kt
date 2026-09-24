@@ -35,10 +35,6 @@ fun AmountScreen(vm: MainViewModel, op: PayOperationType) {
     PtScaffold(Labels.operation(op), onBack = { vm.pop() }, scroll = false, wide = true, bottomBar = {
         PtButton("Continuar", { vm.push(Screen.Checkout(cents, op)) }, Modifier.fillMaxWidth(), icon = PtIcons.Forward, enabled = cents > 0)
     }) {
-        vm.presentedCard?.let { c ->
-            Banner(if (c.event == br.com.aditum.data.v2.enums.PinpadEvent.MagneticStripeCard) "Cartão passado" else "Cartão inserido", Tone.Info,
-                "Informe o valor: o serviço usa este cartão, sem pedir de novo.", PtIcons.Sale)
-        }
         val keypad: @Composable () -> Unit = { AmountKeypad(onDigit = { cents = Money.push(cents, it) }, onBackspace = { cents /= 10 }, onClear = { cents = 0 }) }
         // tela larga: o valor à esquerda e o teclado à direita, os dois centralizados na altura
         if (LocalWidthClass.current == WidthClass.Expanded) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {

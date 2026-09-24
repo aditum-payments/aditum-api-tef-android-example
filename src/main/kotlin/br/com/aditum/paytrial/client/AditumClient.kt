@@ -17,8 +17,6 @@ import br.com.aditum.data.v2.enums.PrintStatus
 import br.com.aditum.data.v2.enums.TransactionStatus
 import br.com.aditum.data.v2.model.Charge
 import br.com.aditum.data.v2.model.MerchantCustomization
-import br.com.aditum.data.v2.model.callbacks.CardEvent
-import br.com.aditum.data.v2.model.callbacks.CardEventCallback
 import br.com.aditum.data.v2.model.MerchantData
 import br.com.aditum.data.v2.model.TerminalStatus
 import br.com.aditum.data.v2.model.callbacks.GetClearDataFinishedCallback
@@ -117,20 +115,6 @@ class AditumClient(context: Context, val trace: TraceLog) {
     val connection: StateFlow<Connection> get() = _connection
     private val _events = MutableSharedFlow<PaymentEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<PaymentEvent> get() = _events
-    private val _cards = MutableSharedFlow<CardEvent>(extraBufferCapacity = 8)
-    /** Cartões apresentados enquanto a escuta está ligada ([startCardListener], contrato 3.0.0). */
-    val cards: SharedFlow<CardEvent> get() = _cards
-    private val cardCallback = object : CardEventCallback.Stub() {
-        override fun onCardDetected(event: CardEvent?) {
-            trace.callback("onCardDetected", screen, ContractJson.redacted(event))
-            event?.let { _cards.tryEmit(it) }
-        }
-        override fun onCardRemovalRequired() { trace.callback("onCardRemovalRequired", screen, null); _cardRemoval.value = true }
-        override fun onCardRemoved() { trace.callback("onCardRemoved", screen, null); _cardRemoval.value = false }
-    }
-    private val _cardRemoval = kotlinx.coroutines.flow.MutableStateFlow(false)
-    /** O serviço pede a retirada do chip que não virou venda; enquanto true, ele recusa operações ("RETIRE O CARTÃO"). */
-    val cardRemoval: kotlinx.coroutines.flow.StateFlow<Boolean> get() = _cardRemoval
     private val _prompt = MutableStateFlow<Prompt?>(null)
     val prompt: StateFlow<Prompt?> get() = _prompt
 
@@ -283,12 +267,6 @@ class AditumClient(context: Context, val trace: TraceLog) {
      */
     suspend fun merchantCustomization(): Res<MerchantCustomization?> = call("getMerchantCustomization", null, MIN / 2) { s, done -> done(s.merchantCustomization) }
     suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
-    /**
-     * Escuta de cartão antes da venda (3.0.0, opcional): chip inserido ou tarja passada chegam em [cards] e o próximo
-     * `pay` usa esse cartão. Serviço 2.x não tem o método e nada acontece — a venda segue pelo botão.
-     */
-    fun startCardListener() { val svc = service ?: return; runCatching { svc.startCardListener(cardCallback); trace.callback("startCardListener", screen, null) }.onFailure { Log.w(TAG, "startCardListener falhou", it) } }
-    fun stopCardListener() { val svc = service ?: return; runCatching { svc.stopCardListener(); trace.callback("stopCardListener", screen, null) }.onFailure { Log.w(TAG, "stopCardListener falhou", it) } }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }
     /** O terminal tem impressora? O contrato responde com `getDeviceSdk().printerSdk` nulo quando não tem. */
     suspend fun hasPrinter(): Res<Boolean> = call("getDeviceSdk", null, MIN / 2) { s, done -> done(s.deviceSdk?.printerSdk != null) }
