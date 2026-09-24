@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 /** Preferências do Aditum Pay Trial, guardadas no aparelho. */
 data class PayTrialSettings(
     val activationCode: String = "",
-    /** true = "Telas do integrador" (`useOnlySdk`): o app desenha PIN, QR, dado digitado e menu. */
-    val integratorScreens: Boolean = false,
+    /** true = "Telas do integrador" (`useOnlySdk`): o app desenha PIN, QR, dado digitado e menu. Sempre true no build TefSDK. */
+    val integratorScreens: Boolean = !BuildConfig.ADITUM_SCREENS,
     val mainMessage: String = "ADITUM PAY TRIAL",
     val processingMessage: String = "",
     val approvedMessage: String = "",
@@ -30,7 +30,7 @@ class SettingsStore(context: Context) {
 
     private fun load() = PayTrialSettings(
         activationCode = prefs.getString("activationCode", "") ?: "",
-        integratorScreens = prefs.getBoolean("integratorScreens", false),
+        integratorScreens = !BuildConfig.ADITUM_SCREENS || prefs.getBoolean("integratorScreens", false),
         mainMessage = prefs.getString("mainMessage", "ADITUM PAY TRIAL") ?: "",
         processingMessage = prefs.getString("processingMessage", "") ?: "",
         approvedMessage = prefs.getString("approvedMessage", "") ?: "",

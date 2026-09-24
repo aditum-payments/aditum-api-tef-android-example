@@ -92,6 +92,8 @@ android {
         versionName = appVersion
         buildConfigField("String", "PARTNER_TOKEN", "\"$partnerToken\"")
         buildConfigField("String", "DEVICE", "\"$deviceToken\"")
+        // TefSDK não tem as telas da Aditum: o build para ele só oferece "Telas do integrador" (useOnlySdk = true)
+        buildConfigField("boolean", "ADITUM_SCREENS", (deviceToken != "TefSdk").toString())
         buildConfigField("String", "ENVIRONMENT", "\"$environment\"")
         buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         vectorDrawables.useSupportLibrary = true

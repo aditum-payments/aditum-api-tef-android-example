@@ -79,6 +79,13 @@ desenha as telas durante a operação:
 - **Telas do integrador** (`useOnlySdk = true`): nenhuma tela da Aditum; mensagens, senha, menus e QR Code chegam
   por `IPaymentCallback` e o app desenha tudo.
 
+O **TefSDK não tem as telas da Aditum**: o Pay Trial buildado com `-Ppaytrial.device=TEFSDK` só oferece as do
+integrador, e o serviço TefSDK segue sempre com `useOnlySdk = true` (avisa no `init` quando o integrador pediu as da
+Aditum; o Pay Trial sem dispositivo esconde a escolha ao receber o aviso).
+
+O comprovante que o integrador recebe (`merchantReceipt`/`cardholderReceipt`) é sempre o **padrão**, em linhas de
+texto; o personalizado em HTML é só do app standalone da Aditum.
+
 As mensagens do pinpad (`InitRequest.pinpadMessages`) ficam na mesma tela e valem nos dois modos.
 
 Se o banner disser *"versão standalone, sem o serviço App2App"*, o terminal tem o app standalone da Aditum no lugar

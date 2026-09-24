@@ -31,8 +31,9 @@ fun ConnectScreen(vm: MainViewModel) {
             supporting = "9 dígitos, do portal do estabelecimento. Em branco, o serviço usa o do build.")
         }, second = {
         SectionLabel("Quem desenha as telas")
-        Segmented(listOf(false to "Telas da Aditum", true to "Telas do integrador"), settings.integratorScreens, { v -> vm.settings.update { it.copy(integratorScreens = v) } })
-        Text(if (settings.integratorScreens) "Este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true)." else "O app da Aditum abre por cima durante a operação e fecha no fim (useOnlySdk = false).",
+        if (!vm.aditumScreensAvailable) Banner("Telas do integrador", Tone.Info, "O TefSDK não tem as telas da Aditum: este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true).")
+        else Segmented(listOf(false to "Telas da Aditum", true to "Telas do integrador"), settings.integratorScreens, { v -> vm.settings.update { it.copy(integratorScreens = v) } })
+        if (vm.aditumScreensAvailable) Text(if (settings.integratorScreens) "Este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true)." else "O app da Aditum abre por cima durante a operação e fecha no fim (useOnlySdk = false).",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         ListRow("Mensagens do pinpad", icon = PtIcons.Terminal, details = listOf(settings.mainMessage.ifBlank { "Padrão do serviço" }), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { messages = true })
         vm.initError?.let { Banner("Não foi possível iniciar", Tone.Error, it) }

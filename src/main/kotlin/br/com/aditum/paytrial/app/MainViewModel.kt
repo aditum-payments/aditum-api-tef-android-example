@@ -97,6 +97,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var busy by mutableStateOf<String?>(null); private set
     /** Impressora no terminal (`getDeviceSdk().printerSdk != null`); sem ela, comprovante só por envio. */
     var hasPrinter by mutableStateOf(true); private set
+    /**
+     * O serviço tem as telas da Aditum? Falso no build TefSDK e quando o `init` volta com o aviso de que o serviço seguiu
+     * com as telas do integrador (Pay Trial sem dispositivo ligado a um TefSDK): aí a opção some e o app fica com as suas.
+     */
+    var aditumScreensAvailable by mutableStateOf(BuildConfig.ADITUM_SCREENS); private set
     /** Última `notification` do serviço, de qualquer chamada (tabelas, init…): a barra de processo mostra a mais recente. */
     var notice by mutableStateOf<PaymentEvent.Notification?>(null); private set
 
@@ -142,6 +147,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending()
         // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
         r.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
+        if (r.errors.orEmpty().any { it.message == USE_ONLY_SDK_FORCED }) {
+            aditumScreensAvailable = false; settings.update { it.copy(integratorScreens = true) }; lastInit?.useOnlySdk = true
+        }
     }
 
     // ---------------------------------------------------------------- navegação
@@ -325,3 +333,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         fun errorText(e: ErrorMessage): String = listOfNotNull(e.message?.takeIf { it.isNotBlank() }, e.description?.takeIf { it.isNotBlank() && it != e.message }).joinToString(" · ").ifBlank { "Erro" } + (e.code?.let { " (código $it)" } ?: "")
     }
 }
+
+/** Aviso do `init` quando o serviço não tem as telas da Aditum (TefSDK) e segue com `useOnlySdk = true`. */
+private const val USE_ONLY_SDK_FORCED = "TELAS DO INTEGRADOR"
