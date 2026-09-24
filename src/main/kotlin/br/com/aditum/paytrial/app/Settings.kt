@@ -10,7 +10,11 @@ data class PayTrialSettings(
     val activationCode: String = "",
     /** true = "Telas do integrador" (`useOnlySdk`): o app desenha PIN, QR, dado digitado e menu. Sempre true no build TefSDK. */
     val integratorScreens: Boolean = !BuildConfig.ADITUM_SCREENS,
-    val mainMessage: String = "ADITUM PAY TRIAL",
+    /**
+     * Vazio de fábrica: o serviço deixa no pinpad parado o logo do estabelecimento, ou o nome dele (como o app atual).
+     * Preenchida, a mensagem do integrador vence o nome — o logo continua tendo prioridade.
+     */
+    val mainMessage: String = "",
     val processingMessage: String = "",
     val approvedMessage: String = "",
     val declinedMessage: String = "",
@@ -31,7 +35,8 @@ class SettingsStore(context: Context) {
     private fun load() = PayTrialSettings(
         activationCode = prefs.getString("activationCode", "") ?: "",
         integratorScreens = !BuildConfig.ADITUM_SCREENS || prefs.getBoolean("integratorScreens", false),
-        mainMessage = prefs.getString("mainMessage", "ADITUM PAY TRIAL") ?: "",
+        // "ADITUM PAY TRIAL" era o padrão antigo: quem nunca mudou passa a ver o estabelecimento no pinpad
+        mainMessage = (prefs.getString("mainMessage", "") ?: "").takeUnless { it == "ADITUM PAY TRIAL" }.orEmpty(),
         processingMessage = prefs.getString("processingMessage", "") ?: "",
         approvedMessage = prefs.getString("approvedMessage", "") ?: "",
         declinedMessage = prefs.getString("declinedMessage", "") ?: "",

@@ -164,11 +164,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun init() {
         val s = settings.state.value
+        // sem código não há init: o serviço não recebe ativação vazia deste app
+        val code = s.activationCode.filter(Char::isDigit)
+        if (code.length != ACTIVATION_CODE_LENGTH) { initError = "Informe o código de ativação ($ACTIVATION_CODE_LENGTH dígitos)"; return }
         initializing = true; initError = null
         viewModelScope.launch {
             val req = InitRequest(
                 applicationToken = BuildConfig.PARTNER_TOKEN, applicationName = "Aditum Pay Trial", applicationVersion = BuildConfig.VERSION_NAME,
-                activationCode = s.activationCode.filter(Char::isLetterOrDigit).ifBlank { null },
+                activationCode = code,
                 pinpadMessages = PinpadMessages(approvedMessage = s.approvedMessage.ifBlank { null }, declinedMessage = s.declinedMessage.ifBlank { null },
                     initializationMessage = s.initializationMessage.ifBlank { null }, mainMessage = s.mainMessage.ifBlank { null }, processingMessage = s.processingMessage.ifBlank { null }),
                 useOnlySdk = s.integratorScreens,
@@ -336,3 +339,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
 /** Aviso do `init` quando o serviço não tem as telas da Aditum (TefSDK) e segue com `useOnlySdk = true`. */
 private const val USE_ONLY_SDK_FORCED = "TELAS DO INTEGRADOR"
+
+/** Código de ativação do portal do estabelecimento: sempre 9 dígitos. */
+const val ACTIVATION_CODE_LENGTH = 9

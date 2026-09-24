@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.aditum.data.v2.enums.PayOperationType
+import br.com.aditum.paytrial.app.ACTIVATION_CODE_LENGTH
 import br.com.aditum.paytrial.app.Labels
 import br.com.aditum.paytrial.app.MainViewModel
 import br.com.aditum.paytrial.app.Screen
@@ -23,19 +24,19 @@ fun ConnectScreen(vm: MainViewModel) {
     val code = settings.activationCode
     PtScaffold("Conectar à Aditum", wide = true, bottomBar = {
         PtButton(if (vm.initializing) "Iniciando…" else "Iniciar", { vm.init() }, Modifier.fillMaxWidth(), icon = PtIcons.Plug,
-            enabled = conn is AditumClient.Connection.Connected && !vm.initializing)
+            enabled = conn is AditumClient.Connection.Connected && !vm.initializing && code.length == ACTIVATION_CODE_LENGTH)
     }) {
         TwoPane(first = {
         ConnectionBanner(conn)
         PtField(code, { v -> vm.settings.update { it.copy(activationCode = v.filter(Char::isDigit).take(9)) } }, "Código de ativação", keyboard = KeyboardType.Number,
-            supporting = "9 dígitos, do portal do estabelecimento. Em branco, o serviço usa o do build.")
+            supporting = "9 dígitos, do portal do estabelecimento. Obrigatório.")
         }, second = {
         SectionLabel("Quem desenha as telas")
         if (!vm.aditumScreensAvailable) Banner("Telas do integrador", Tone.Info, "O TefSDK não tem as telas da Aditum: este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true).")
         else Segmented(listOf(false to "Telas da Aditum", true to "Telas do integrador"), settings.integratorScreens, { v -> vm.settings.update { it.copy(integratorScreens = v) } })
         if (vm.aditumScreensAvailable) Text(if (settings.integratorScreens) "Este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true)." else "O app da Aditum abre por cima durante a operação e fecha no fim (useOnlySdk = false).",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ListRow("Mensagens do pinpad", icon = PtIcons.Terminal, details = listOf(settings.mainMessage.ifBlank { "Padrão do serviço" }), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { messages = true })
+        ListRow("Mensagens do pinpad", icon = PtIcons.Terminal, details = listOf(settings.mainMessage.ifBlank { "Logo ou nome do estabelecimento" }), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { messages = true })
         vm.initError?.let { Banner("Não foi possível iniciar", Tone.Error, it) }
         if (vm.initializing) LinearProgressIndicator(Modifier.fillMaxWidth())
         })

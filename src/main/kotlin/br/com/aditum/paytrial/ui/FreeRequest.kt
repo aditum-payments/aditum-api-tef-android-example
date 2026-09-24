@@ -61,7 +61,10 @@ fun FreeRequestScreen(vm: MainViewModel, base: PaymentRequest?) {
         SectionLabel("Atalhos")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             AssistChip(onClick = { preset { amount = "0" } }, label = { Text("Sem valor") })
-            AssistChip(onClick = { preset { type = PaymentType.Undefined; instType = InstallmentType.Undefined; installments = 0; qr = false } }, label = { Text("Sem forma") })
+            // o contrato não tem ASK_USER: Undefined é ele (app type "99" no GCR/GOC). Com as Telas do integrador, a BC
+            // pergunta a aplicação no pinpad; com as da Aditum, a tela de forma de pagamento do standalone pergunta antes
+            AssistChip(onClick = { preset { type = PaymentType.Undefined; instType = InstallmentType.Undefined; installments = 0; qr = false } },
+                label = { Text(if (settings.integratorScreens) "Menu da BC no pinpad" else "Sem forma") })
             AssistChip(onClick = { preset { type = PaymentType.Credit; instType = InstallmentType.Undefined; installments = 0; qr = false } }, label = { Text("Crédito sem parcelamento") })
             AssistChip(onClick = { preset { op = PayOperationType.PreAuthorizationCapture; nsu = "" } }, label = { Text("Captura sem NSU") })
             AssistChip(onClick = { preset { amount = "0"; op = PayOperationType.Authorization; type = PaymentType.Undefined; instType = InstallmentType.Undefined; installments = 0; qr = false; nsu = "" } }, label = { Text("Tudo em branco") })
@@ -73,7 +76,9 @@ fun FreeRequestScreen(vm: MainViewModel, base: PaymentRequest?) {
         ChoiceChips(PayOperationType.values().map { it to it.name }, op, { op = it })
         PtField(nsu, { nsu = it.filter(Char::isDigit) }, "originalNsu", keyboard = KeyboardType.Number, supporting = "NSU da pré-autorização (captura e incremento)")
         SectionLabel("Forma de pagamento (paymentType)")
-        ChoiceChips(PaymentType.values().map { it to it.name }, type, { type = it })
+        ChoiceChips(PaymentType.values().map { it to if (it == PaymentType.Undefined) "Undefined (ASK_USER)" else it.name }, type, { type = it })
+        if (type == PaymentType.Undefined) Text(if (settings.integratorScreens) "Sem forma: a BC pergunta a aplicação no pinpad (app type 99)." else "Sem forma: a tela da Aditum pergunta a forma antes do cartão.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SwitchRow("QR Code", qr, { qr = it }, "isQrCode (Pix e carteiras)")
         PtField(scheme, { scheme = it.take(40) }, "scheme", supporting = "Esquema da carteira/QR, quando houver")
         }, second = {
