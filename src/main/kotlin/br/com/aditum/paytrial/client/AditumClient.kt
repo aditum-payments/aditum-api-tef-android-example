@@ -272,6 +272,19 @@ class AditumClient(context: Context, val trace: TraceLog) {
     suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
     suspend fun listPinpads(): Res<List<PinpadDevice>> = call("listPinpads", null, MIN + MIN / 2) { s, done -> done(s.listPinpads().orEmpty()) }
     suspend fun selectPinpad(d: PinpadDevice?): Res<Boolean> = call("selectPinpad", d, MIN + MIN / 2) { s, done -> done(s.selectPinpad(d)) }
+    /**
+     * Busca de pinpads (3.0.0): cada aparelho chega em [onFound] assim que o serviço o acha, como na tela de pareamento
+     * do Android; [onFinished] no fim (tempo, [stopPinpadScan] ou conexão automática). Callbacks na thread do binder.
+     */
+    fun scanPinpads(onFound: (PinpadDevice) -> Unit, onFinished: () -> Unit) {
+        val svc = service ?: return onFinished()
+        val cb = object : br.com.aditum.data.v2.model.callbacks.PinpadScanCallback.Stub() {
+            override fun onDeviceFound(device: PinpadDevice?) { device?.let { trace.callback("onDeviceFound", screen, ContractJson.redacted(it)); onFound(it) } }
+            override fun onScanFinished() { trace.callback("onScanFinished", screen, null); onFinished() }
+        }
+        runCatching { svc.scanPinpads(cb); trace.callback("scanPinpads", screen, null) }.onFailure { Log.w(TAG, "scanPinpads falhou", it); onFinished() }
+    }
+    fun stopPinpadScan() { runCatching { service?.stopPinpadScan() } }
     suspend fun disconnectPinpad(d: PinpadDevice?): Res<Boolean> = call("disconnectPinpad", d, MIN / 2) { s, done -> done(s.disconnectPinpad(d)) }
     suspend fun forgetPinpad(d: PinpadDevice): Res<Boolean> = call("forgetPinpad", d, MIN / 2) { s, done -> done(s.forgetPinpad(d)) }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }

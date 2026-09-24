@@ -109,8 +109,8 @@ O que este app faz e que todo integrador precisa fazer (ver `client/AditumClient
 7. **Impressão:** `getDeviceSdk().print(bitmap, callback)` com o comprovante já desenhado (`app/ReceiptPrinter.kt`).
 8. **Opcionais do 3.0.0** (no fim da interface; serviço 2.x responde `null`): `getMerchantCustomization()` traz o logo
    e as cores do estabelecimento — sem logo, use o seu (o Pay Trial usa o da Aditum, como o standalone) —; e
-   `getTerminalStatus()` diz se há pinpad externo (TefSDK) e se ele está plugado. `listPinpads()`/`selectPinpad()` listam e escolhem o pinpad
-   externo do TefSDK — USB ou Bluetooth já pareado nas Configurações do Android (tela "Pinpad" do Pay Trial).
+   `getTerminalStatus()` diz se há pinpad externo (TefSDK) e se ele está plugado. `listPinpads()` (USB + pareados), `scanPinpads()` (busca de
+   30 s, cada aparelho na hora) e `selectPinpad()` (conecta) escolhem o pinpad externo do TefSDK (tela "Pinpad").
 
 ## Dados crus e censura
 

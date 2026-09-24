@@ -200,7 +200,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Pinpads externos (TefSDK, 3.0.0): null = carregando; vazio = nada na USB nem pareado (ou serviço antigo). */
     var pinpads by mutableStateOf<List<br.com.aditum.data.v2.model.PinpadDevice>?>(null); private set
     fun loadPinpads() = viewModelScope.launch { pinpads = null; pinpads = (client.listPinpads() as? Res.Ok)?.value.orEmpty(); refreshTerminalStatus() }
+    /** Busca em curso: a lista vai crescendo com cada aparelho achado. */
+    var scanning by mutableStateOf(false); private set
+    fun scanPinpads() {
+        if (scanning) return
+        scanning = true
+        client.scanPinpads(onFound = { d -> viewModelScope.launch { pinpads = (pinpads.orEmpty().filterNot { it.transport == d.transport && it.id.equals(d.id, true) } + d) } },
+            onFinished = { viewModelScope.launch { scanning = false; refreshTerminalStatus() } })
+    }
+    fun stopPinpadScan() { if (scanning) client.stopPinpadScan() }
     fun choosePinpad(d: br.com.aditum.data.v2.model.PinpadDevice?) = viewModelScope.launch {
+        stopPinpadScan()   // a busca atrapalha a conexão Bluetooth
         busy = "selectPinpad"
         val ok = (client.selectPinpad(d) as? Res.Ok)?.value == true
         busy = null
