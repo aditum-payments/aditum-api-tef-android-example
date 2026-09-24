@@ -61,8 +61,8 @@ val device: String? = requestedDevice.ifBlank { null }?.let { r ->
     deviceKeys.keys.firstOrNull { normalize(it) == n } ?: deviceAliases.entries.firstOrNull { normalize(it.key) == n }?.value
         ?: error("paytrial: dispositivo '$r' desconhecido. Alvos: ${deviceKeys.keys.joinToString()} (e apelidos: ${deviceAliases.keys.joinToString()})")
 }
-/** Token do dispositivo no nome do APK: o modelo em maiúsculas (TefSdk como no serviço); sem dispositivo, ANY. */
-val deviceToken = when (device) { null -> "ANY"; "TEFSDK" -> "TefSdk"; else -> device }
+/** Token do dispositivo no nome do APK: o modelo em maiúsculas (TefSdk como no serviço); sem dispositivo, nenhum. */
+val deviceToken = when (device) { null -> ""; "TEFSDK" -> "TefSdk"; else -> device }
 val environment = (providers.gradleProperty("paytrial.environment").orNull ?: System.getenv("ENVIRONMENT") ?: "development").trim()
 val envToken = if (environment.equals("production", ignoreCase = true)) "P" else "D"
 // produção com o token de desenvolvimento não autentica em lugar nenhum: melhor falhar no build que no terminal
@@ -132,10 +132,11 @@ android {
 kotlin { jvmToolchain(17) }
 
 // nome do artefato como o do serviço: AditumPayTrial-A2A-<D|P>-<MODELO>-<versão>+<hash>-<tipo>.apk em build/dist/
-if (device == null) logger.lifecycle("paytrial: sem -Ppaytrial.device o APK sai como ANY e o release com a chave de debug")
+// (sem -Ppaytrial.device, sem o modelo: AditumPayTrial-A2A-<D|P>-<versão>+<hash>-<tipo>.apk)
+if (device == null) logger.lifecycle("paytrial: sem -Ppaytrial.device o APK sai sem dispositivo no nome e o release com a chave de debug")
 androidComponents {
     onVariants { v ->
-        val name = "AditumPayTrial-A2A-$envToken-$deviceToken-$appVersion+$gitHash-${v.buildType}.apk"
+        val name = "AditumPayTrial-A2A-$envToken-${if (deviceToken.isEmpty()) "" else "$deviceToken-"}$appVersion+$gitHash-${v.buildType}.apk"
         val dist = tasks.register<Copy>("dist${v.name.replaceFirstChar { it.uppercase() }}") {
             from(v.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)) { include("*.apk"); rename { name } }
             into(layout.buildDirectory.dir("dist"))

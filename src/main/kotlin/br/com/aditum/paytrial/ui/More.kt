@@ -50,7 +50,7 @@ fun MoreScreen(vm: MainViewModel) {
         ListRow("Requisição livre", icon = PtIcons.Edit, details = listOf("pay() com qualquer combinação de operação, forma e parcelamento, sem validação"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.FreeRequest()) })
         ListRow("Desenvolvedor", icon = PtIcons.Bug, details = listOf(if (settings.integrationMode) "Modo de integração ligado" else "Modo de integração desligado"), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { vm.push(Screen.Developer) })
         SectionLabel("Sobre")
-        KeyValueCard(listOf("Aditum Pay Trial" to BuildConfig.VERSION_NAME, "Build" to BuildConfig.GIT_HASH, "Dispositivo do build" to BuildConfig.DEVICE, "Ambiente" to BuildConfig.ENVIRONMENT, "Pacote" to BuildConfig.APPLICATION_ID,
+        KeyValueCard(listOf("Aditum Pay Trial" to BuildConfig.VERSION_NAME, "Build" to BuildConfig.GIT_HASH, "Dispositivo do build" to BuildConfig.DEVICE.ifBlank { "não especificado" }, "Ambiente" to BuildConfig.ENVIRONMENT, "Pacote" to BuildConfig.APPLICATION_ID,
             "Serviço" to AditumClient.SERVICE_PACKAGE, "Telas" to if (settings.integratorScreens) "do integrador (useOnlySdk)" else "da Aditum"), setOf("Build", "Pacote", "Serviço"))
         if (vm.busy != null) LinearProgressIndicator(Modifier.fillMaxWidth())
     }
