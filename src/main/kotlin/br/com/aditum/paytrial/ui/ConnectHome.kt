@@ -75,9 +75,9 @@ fun HomeScreen(vm: MainViewModel) {
         // pinpad externo (TefSDK): o status dele no lugar de "Telas…"; em POS, com pinpad embutido, não faz sentido mostrar
         LaunchedEffect(Unit) { while (true) { vm.refreshTerminalStatus(traced = false); kotlinx.coroutines.delay(5_000) } }
         val status = vm.terminalStatus
-        MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model).joinToString(" · ").ifBlank { "Terminal ativado" },
+        MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model?.ifBlank { null }).joinToString(" · ").ifBlank { "Terminal ativado" },
             vm.merchantLogo,
-            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(st.pinpadModel?.takeIf { it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
+            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(st.pinpadModel?.takeIf { it.isNotBlank() && it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
             screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum")
         ShortcutGrid(listOf(
             Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true), Shortcut("cancel", "Cancelar", PtIcons.Cancel),
