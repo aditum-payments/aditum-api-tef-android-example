@@ -39,25 +39,30 @@ fun CancelScreen(vm: MainViewModel, prefill: String) {
     val c = found
     val amount = if (partial) partialCents else c?.amount ?: 0L
     val error = when { c == null -> null; partial && partialCents <= 0 -> "Informe o valor a cancelar"; partial && partialCents > c.amount -> "Até ${Money.brl(c.amount)}"; else -> null }
-    PtScaffold("Cancelar venda", onBack = { vm.pop() }, bottomBar = {
+    PtScaffold("Cancelar venda", onBack = { vm.pop() }, wide = true, bottomBar = {
         PtButton("Cancelar ${Money.brl(amount)}", { ask = true }, Modifier.fillMaxWidth(), PtButtonKind.Danger, PtIcons.Cancel, enabled = c != null && error == null && vm.busy == null)
     }) {
-        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PtField(nsu, { nsu = it.filter(Char::isDigit) }, "NSU", Modifier.weight(1f), keyboard = KeyboardType.Number)
-            PtButton("Buscar", { search() }, kind = PtButtonKind.Tonal, icon = PtIcons.Lookup, enabled = nsu.isNotBlank() && vm.busy == null)
-        }
-        if (vm.busy == "charge") LinearProgressIndicator(Modifier.fillMaxWidth())
-        notFound?.let { Banner(it, Tone.Warning) }
-        if (c != null) {
-            c.chargeStatus?.let { StatusTag(Labels.chargeStatus(it), if (it == ChargeStatus.Canceled) Tone.Error else Tone.Neutral) }
-            KeyValueCard(listOf("Valor" to Money.brl(c.amount)) + chargeRows(c), MONO_KEYS)
-            SwitchRow("Cancelamento parcial", partial, { partial = it }, if (allowPartial) "isPartial + entryAmount" else "O estabelecimento não permite (allowPartialCancel)", enabled = allowPartial)
-            if (partial) {
-                AmountDisplay(partialCents, "Valor a cancelar", error)
-                AmountKeypad(onDigit = { partialCents = Money.push(partialCents, it) }, onBackspace = { partialCents /= 10 }, onClear = { partialCents = 0 })
+        TwoPane(first = {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PtField(nsu, { nsu = it.filter(Char::isDigit) }, "NSU", Modifier.weight(1f), keyboard = KeyboardType.Number)
+                PtButton("Buscar", { search() }, kind = PtButtonKind.Tonal, icon = PtIcons.Lookup, enabled = nsu.isNotBlank() && vm.busy == null)
             }
-            SwitchRow("Desfazimento (estorno)", reversal, { reversal = it }, "isReversal: desfaz em vez de cancelar")
-        }
+            if (vm.busy == "charge") LinearProgressIndicator(Modifier.fillMaxWidth())
+            notFound?.let { Banner(it, Tone.Warning) }
+            if (c != null) {
+                c.chargeStatus?.let { StatusTag(Labels.chargeStatus(it), if (it == ChargeStatus.Canceled) Tone.Error else Tone.Neutral) }
+                KeyValueCard(listOf("Valor" to Money.brl(c.amount)) + chargeRows(c), MONO_KEYS)
+            }
+        }, second = {
+            if (c != null) {
+                SwitchRow("Cancelamento parcial", partial, { partial = it }, if (allowPartial) "isPartial + entryAmount" else "O estabelecimento não permite (allowPartialCancel)", enabled = allowPartial)
+                if (partial) {
+                    AmountDisplay(partialCents, "Valor a cancelar", error)
+                    AmountKeypad(onDigit = { partialCents = Money.push(partialCents, it) }, onBackspace = { partialCents /= 10 }, onClear = { partialCents = 0 })
+                }
+                SwitchRow("Desfazimento (estorno)", reversal, { reversal = it }, "isReversal: desfaz em vez de cancelar")
+            }
+        })
     }
     if (ask && c != null) PtDialog("Cancelar a venda?", "${if (partial) "Cancelamento parcial de ${Money.brl(amount)}" else "Cancelamento de ${Money.brl(amount)}"} do NSU ${c.nsu}.", "Cancelar venda",
         onConfirm = { ask = false; vm.startCancel(CancelationRequest(nsu = c.nsu.orEmpty(), isReversal = reversal, isPartial = partial, entryAmount = if (partial) partialCents else 0L), amount) },
@@ -81,7 +86,8 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
         found?.nsu?.let { nsu -> pending = (vm.pendings() as? Res.Ok)?.value?.any { it.nsu == nsu } == true }
     }
     LaunchedEffect(Unit) { if (prefill.isNotBlank()) search() }
-    PtScaffold("Consultar", onBack = { vm.pop() }) {
+    PtScaffold("Consultar", onBack = { vm.pop() }, wide = true) {
+        TwoPane(first = {
         Segmented(listOf(false to "NSU", true to "Referência do pedido"), byRef, { byRef = it; query = "" })
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PtField(query, { query = if (byRef) it.take(40) else it.filter(Char::isDigit) }, if (byRef) "Referência (merchantChargeId)" else "NSU", Modifier.weight(1f),
@@ -90,6 +96,7 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
         }
         if (vm.busy == "charge") LinearProgressIndicator(Modifier.fillMaxWidth())
         msg?.let { Banner(it, Tone.Warning) }
+        }, second = {
         found?.let { c ->
             c.chargeStatus?.let { StatusTag(Labels.chargeStatus(it), if (it == ChargeStatus.Pending) Tone.Warning else Tone.Neutral) }
             KeyValueCard(listOf("Valor" to Money.brl(c.amount)) + chargeRows(c), MONO_KEYS)
@@ -101,6 +108,7 @@ fun LookupScreen(vm: MainViewModel, prefill: String) {
             ListRow("Enviar comprovante", icon = PtIcons.Send, onClick = { send = true })
             ListRow("Cancelar", icon = PtIcons.Cancel, onClick = { vm.push(Screen.Cancel(c.nsu.orEmpty())) })
         }
+        })
     }
     if (send) found?.let { SendReceiptSheet(vm, it) { send = false } }
 }

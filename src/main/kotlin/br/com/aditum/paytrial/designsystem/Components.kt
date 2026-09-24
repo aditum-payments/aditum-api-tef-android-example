@@ -51,8 +51,12 @@ val LocalTopBarExtra = compositionLocalOf<(@Composable RowScope.() -> Unit)?> { 
 fun PtScaffold(
     title: String, onBack: (() -> Unit)? = null, onClose: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {},
     bottomBar: @Composable (() -> Unit)? = null, snackbarHost: SnackbarHostState? = null, scroll: Boolean = true,
-    floating: @Composable (BoxScope.() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
+    floating: @Composable (BoxScope.() -> Unit)? = null,
+    /** Tela em duas colunas ([TwoPane]): no expandido o conteúdo vai até [WideContentMaxWidth] em vez da coluna estreita. */
+    wide: Boolean = false, content: @Composable ColumnScope.() -> Unit,
 ) {
+    val wc = LocalWidthClass.current
+    val contentMax = if (wide && wc == WidthClass.Expanded) WideContentMaxWidth else wc.contentMaxWidth
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
@@ -77,7 +81,7 @@ fun PtScaffold(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             // em tablet a coluna fica centralizada e com largura máxima; no celular ocupa a tela
-            val base = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = LocalWidthClass.current.contentMaxWidth).fillMaxWidth().padding(horizontal = 16.dp)
+            val base = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = contentMax).fillMaxWidth().padding(horizontal = if (wc == WidthClass.Expanded) 24.dp else 16.dp)
             Column(if (scroll) base.verticalScroll(rememberScrollState()) else base, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(Modifier.height(4.dp)); content(); Spacer(Modifier.height(if (floating != null) 88.dp else 16.dp))
             }

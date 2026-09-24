@@ -51,11 +51,12 @@ fun FreeRequestScreen(vm: MainViewModel, base: PaymentRequest?) {
     // atalhos para os pedidos que o serviço tem de completar (Telas da Aditum) ou recusar (Telas do integrador)
     fun preset(block: () -> Unit) { block(); chargeId = vm.newChargeId() }
 
-    PtScaffold("Requisição livre", onBack = { vm.pop() }, actions = {
+    PtScaffold("Requisição livre", onBack = { vm.pop() }, wide = true, actions = {
         IconButton(onClick = { preview = true }) { PtIcon(PtIcons.Json, "Ver a requisição") }
     }, bottomBar = {
         PtButton("Enviar pay() · ${Money.brl(cents)}", ::send, Modifier.fillMaxWidth(), icon = PtIcons.Send)
     }) {
+        TwoPane(first = {
         Banner("Sem validação", Tone.Info, "O pedido vai ao serviço exatamente assim. ${if (settings.integratorScreens) "Com as Telas do integrador, o que faltar volta como erro." else "Com as Telas da Aditum, o que faltar passa pelas telas do standalone antes do cartão."}")
         SectionLabel("Atalhos")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -75,6 +76,7 @@ fun FreeRequestScreen(vm: MainViewModel, base: PaymentRequest?) {
         ChoiceChips(PaymentType.values().map { it to it.name }, type, { type = it })
         SwitchRow("QR Code", qr, { qr = it }, "isQrCode (Pix e carteiras)")
         PtField(scheme, { scheme = it.take(40) }, "scheme", supporting = "Esquema da carteira/QR, quando houver")
+        }, second = {
         SectionLabel("Parcelamento (installmentType)")
         ChoiceChips(InstallmentType.values().map { it to it.name }, instType, { instType = it })
         StepperRow(installments, 0, 99, { installments = it }, "installmentNumber: $installments")
@@ -88,6 +90,7 @@ fun FreeRequestScreen(vm: MainViewModel, base: PaymentRequest?) {
         PtButton("Gerar outra referência", { chargeId = vm.newChargeId() }, kind = PtButtonKind.Text, icon = PtIcons.Refresh)
         PtField(origin, { origin = it.take(40) }, "origin")
         PtField(currency, { currency = it.filter(Char::isDigit).take(3) }, "currency", keyboard = KeyboardType.Number, supporting = "986 = BRL")
+        })
     }
     if (preview) RequestPreviewSheet(ContractJson.redacted(request()), onDismiss = { preview = false }, onSend = { preview = false; vm.startPay(request()) })
 }

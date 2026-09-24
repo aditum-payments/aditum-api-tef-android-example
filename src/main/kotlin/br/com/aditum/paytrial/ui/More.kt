@@ -30,7 +30,8 @@ fun MoreScreen(vm: MainViewModel) {
     val settings by vm.settings.state.collectAsState()
     var deactivate by remember { mutableStateOf(false) }
     val t = vm.terminal
-    PtScaffold("Mais", onBack = { vm.pop() }) {
+    PtScaffold("Mais", onBack = { vm.pop() }, wide = true) {
+        TwoPane(first = {
         SectionLabel("Terminal")
         KeyValueCard(listOfNotNull(
             t?.model?.let { "Modelo" to listOfNotNull(t.manufacturerName, it).joinToString(" ") }, t?.serialNumber?.let { "Série" to it },
@@ -41,6 +42,7 @@ fun MoreScreen(vm: MainViewModel) {
             SectionLabel("Bandeiras aceitas (${vm.brands.size})")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { vm.brands.forEach { BrandPlate(Labels.brand(it)) } }
         }
+        }, second = {
         SectionLabel("Operações")
         ListRow("Atualizar tabelas", icon = PtIcons.Tables, details = listOf("updateEmvTables"), onClick = { vm.updateTables() })
         ListRow("Recarregar estabelecimento", icon = PtIcons.Refresh, details = listOf("getMerchantData"), onClick = { vm.reloadMerchant() })
@@ -53,6 +55,7 @@ fun MoreScreen(vm: MainViewModel) {
         KeyValueCard(listOf("Aditum Pay Trial" to BuildConfig.VERSION_NAME, "Build" to BuildConfig.GIT_HASH, "Dispositivo do build" to BuildConfig.DEVICE.ifBlank { "não especificado" }, "Ambiente" to BuildConfig.ENVIRONMENT, "Pacote" to BuildConfig.APPLICATION_ID,
             "Serviço" to AditumClient.SERVICE_PACKAGE, "Telas" to if (settings.integratorScreens) "do integrador (useOnlySdk)" else "da Aditum"), setOf("Build", "Pacote", "Serviço"))
         if (vm.busy != null) LinearProgressIndicator(Modifier.fillMaxWidth())
+        })
     }
     if (deactivate) PtDialog("Desativar o terminal?", "O terminal deixa de vender até ser ativado de novo com um código do portal.", "Desativar",
         onConfirm = { deactivate = false; vm.deactivate() }, onDismiss = { deactivate = false }, destructive = true)

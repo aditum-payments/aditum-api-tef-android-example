@@ -32,13 +32,20 @@ import kotlinx.coroutines.delay
 @Composable
 fun AmountScreen(vm: MainViewModel, op: PayOperationType) {
     var cents by rememberSaveable { mutableLongStateOf(0L) }
-    PtScaffold(Labels.operation(op), onBack = { vm.pop() }, scroll = false, bottomBar = {
+    PtScaffold(Labels.operation(op), onBack = { vm.pop() }, scroll = false, wide = true, bottomBar = {
         PtButton("Continuar", { vm.push(Screen.Checkout(cents, op)) }, Modifier.fillMaxWidth(), icon = PtIcons.Forward, enabled = cents > 0)
     }) {
-        Spacer(Modifier.height(16.dp))
-        AmountDisplay(cents)
-        Spacer(Modifier.weight(1f))
-        AmountKeypad(onDigit = { cents = Money.push(cents, it) }, onBackspace = { cents /= 10 }, onClear = { cents = 0 })
+        val keypad: @Composable () -> Unit = { AmountKeypad(onDigit = { cents = Money.push(cents, it) }, onBackspace = { cents /= 10 }, onClear = { cents = 0 }) }
+        // tela larga: o valor à esquerda e o teclado à direita, os dois centralizados na altura
+        if (LocalWidthClass.current == WidthClass.Expanded) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { AmountDisplay(cents) }
+            Box(Modifier.weight(1f)) { keypad() }
+        } else {
+            Spacer(Modifier.height(16.dp))
+            AmountDisplay(cents)
+            Spacer(Modifier.weight(1f))
+            keypad()
+        }
     }
 }
 
@@ -74,17 +81,19 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
     )
     fun send() { if (settings.previewBeforeSend) preview = true else vm.startPay(request()) }
 
-    PtScaffold("Pagamento", onBack = { vm.pop() }, actions = {
+    PtScaffold("Pagamento", onBack = { vm.pop() }, wide = true, actions = {
         IconButton(onClick = { vm.push(Screen.FreeRequest(request())) }) { PtIcon(PtIcons.Edit, "Requisição livre") }
         if (settings.integrationMode) IconButton(onClick = { preview = true }) { PtIcon(PtIcons.Json, "Ver a requisição") }
     }, bottomBar = {
         PtButton("Pagar ${Money.brl(amount)}", ::send, Modifier.fillMaxWidth(), icon = PtIcons.Sale, enabled = error == null)
     }) {
+        TwoPane(first = {
         Text(Money.brl(amount), style = MaterialTheme.typography.displaySmall, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         if (operations.size > 1) Segmented(operations.map { it to Labels.operation(it) }, op, { op = it })
         if (PaymentRules.needsOriginalNsu(op)) PtField(originalNsu, { originalNsu = it.filter(Char::isDigit) }, "NSU da pré-autorização", keyboard = KeyboardType.Number)
         SectionLabel("Forma de pagamento")
         OptionTiles(options, option) { option = it }
+        }, second = {
         val o = option
         if (o != null && !o.isQr && o.installmentTypes.size > 1) {
             SectionLabel("Parcelamento")
@@ -103,6 +112,7 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
             KeyValueCard(listOf("Moeda" to "986 (BRL)", "Adquirente" to (o?.acquirer?.name ?: "—"), "Esquema" to (o?.scheme?.ifBlank { "—" } ?: "—")))
         }
         if (error != null && amount > 0) Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        })
     }
     if (preview) RequestPreviewSheet(ContractJson.redacted(request()), onDismiss = { preview = false }, onSend = if (error == null) { { preview = false; vm.startPay(request()) } } else null)
 }

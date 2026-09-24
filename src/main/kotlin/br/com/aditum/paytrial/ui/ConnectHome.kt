@@ -21,13 +21,15 @@ fun ConnectScreen(vm: MainViewModel) {
     val conn by vm.client.connection.collectAsState()
     var messages by remember { mutableStateOf(false) }
     val code = settings.activationCode
-    PtScaffold("Conectar à Aditum", bottomBar = {
+    PtScaffold("Conectar à Aditum", wide = true, bottomBar = {
         PtButton(if (vm.initializing) "Iniciando…" else "Iniciar", { vm.init() }, Modifier.fillMaxWidth(), icon = PtIcons.Plug,
             enabled = conn is AditumClient.Connection.Connected && !vm.initializing)
     }) {
+        TwoPane(first = {
         ConnectionBanner(conn)
         PtField(code, { v -> vm.settings.update { it.copy(activationCode = v.filter(Char::isDigit).take(9)) } }, "Código de ativação", keyboard = KeyboardType.Number,
             supporting = "9 dígitos, do portal do estabelecimento. Em branco, o serviço usa o do build.")
+        }, second = {
         SectionLabel("Quem desenha as telas")
         Segmented(listOf(false to "Telas da Aditum", true to "Telas do integrador"), settings.integratorScreens, { v -> vm.settings.update { it.copy(integratorScreens = v) } })
         Text(if (settings.integratorScreens) "Este app desenha PIN, QR Code, dado digitado e menus (useOnlySdk = true)." else "O app da Aditum abre por cima durante a operação e fecha no fim (useOnlySdk = false).",
@@ -35,6 +37,7 @@ fun ConnectScreen(vm: MainViewModel) {
         ListRow("Mensagens do pinpad", icon = PtIcons.Terminal, details = listOf(settings.mainMessage.ifBlank { "Padrão do serviço" }), trailing = { PtIcon(PtIcons.Chevron) }, onClick = { messages = true })
         vm.initError?.let { Banner("Não foi possível iniciar", Tone.Error, it) }
         if (vm.initializing) LinearProgressIndicator(Modifier.fillMaxWidth())
+        })
     }
     if (messages) PtSheet("Mensagens do pinpad", { messages = false }, actions = { PtButton("Pronto", { messages = false }, Modifier.weight(1f)) }) {
         Text("Enviadas no init (PinpadMessages). Em branco, vale a do serviço.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -61,9 +64,10 @@ fun HomeScreen(vm: MainViewModel) {
     val conn by vm.client.connection.collectAsState()
     val m = vm.merchant
     LaunchedEffect(Unit) { vm.refreshPending() }
-    PtScaffold(m?.fantasyName?.ifBlank { null } ?: "Aditum Pay Trial", actions = {
+    PtScaffold(m?.fantasyName?.ifBlank { null } ?: "Aditum Pay Trial", wide = true, actions = {
         if (settings.integrationMode) IconButton(onClick = { vm.push(Screen.Console) }) { PtIcon(PtIcons.Console, "Console de eventos") }
     }) {
+        TwoPane(first = {
         if (conn !is AditumClient.Connection.Connected) ConnectionBanner(conn)
         Banner(listOfNotNull(m?.document?.let { "CNPJ $it" }, vm.terminal?.model).joinToString(" · ").ifBlank { "Terminal ativado" }, Tone.Neutral,
             if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum", PtIcons.Store)
@@ -78,6 +82,7 @@ fun HomeScreen(vm: MainViewModel) {
                 "confirm" -> vm.push(Screen.Confirm); "lookup" -> vm.push(Screen.Lookup()); "report" -> vm.push(Screen.Report); "more" -> vm.push(Screen.More)
             }
         }
+        }, second = {
         if (vm.recent.isNotEmpty()) {
             SectionLabel("Últimas transações")
             vm.recent.forEach { c ->
@@ -86,6 +91,7 @@ fun HomeScreen(vm: MainViewModel) {
                     monoDetail = c.nsu?.let { "NSU $it" }, value = Money.brl(c.amount), onClick = { vm.push(Screen.Lookup(c.nsu.orEmpty())) })
             }
         }
+        })
     }
 }
 

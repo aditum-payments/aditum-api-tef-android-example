@@ -46,15 +46,16 @@ fun ResultScreen(vm: MainViewModel, onRaw: (Long, Int) -> Unit) {
         r.undone -> "Venda desfeita"; !r.approved -> if (isPay) "Pagamento negado" else "Cancelamento negado"
         !isPay -> "Cancelamento aprovado"; r.confirmed -> "Pagamento confirmado"; else -> "Pagamento aprovado"
     }
-    PtScaffold(title, onClose = { vm.home() }, bottomBar = { ResultFooter(vm) }) {
+    PtScaffold(title, onClose = { vm.home() }, wide = true, bottomBar = { ResultFooter(vm) }) {
         if (settings.integrationMode && r.traceId != null) PtTabs(listOf("Resumo", "Requisição", "Resposta"), tab) { if (it > 0) onRaw(r.traceId, it - 1) }   // as abas cruas abrem o par requisição/resposta
-        ResultHero(r)
-        when {
-            r.failure != null -> Banner("A chamada ao serviço falhou", Tone.Error, r.failure)
-            r.errors.isNotEmpty() -> r.errors.forEach { Banner(it.message?.ifBlank { null } ?: "Erro", Tone.Error, listOfNotNull(it.description?.takeIf { d -> d.isNotBlank() && d != it.message }, it.code?.let { k -> "código $k" }).joinToString(" · ").ifBlank { null }) }
-        }
-        if (c != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // tela larga: situação e ações à esquerda, os dados da venda à direita
+        TwoPane(first = {
+            ResultHero(r)
+            when {
+                r.failure != null -> Banner("A chamada ao serviço falhou", Tone.Error, r.failure)
+                r.errors.isNotEmpty() -> r.errors.forEach { Banner(it.message?.ifBlank { null } ?: "Erro", Tone.Error, listOfNotNull(it.description?.takeIf { d -> d.isNotBlank() && d != it.message }, it.code?.let { k -> "código $k" }).joinToString(" · ").ifBlank { null }) }
+            }
+            if (c != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
                     r.undone -> StatusTag("Desfeita", Tone.Info, PtIcons.Undo)
                     isPay && r.approved && !r.confirmed -> StatusTag("Aguardando confirmação do integrador", Tone.Warning, PtIcons.Pending)
@@ -62,9 +63,12 @@ fun ResultScreen(vm: MainViewModel, onRaw: (Long, Int) -> Unit) {
                     else -> c.chargeStatus?.let { StatusTag(Labels.chargeStatus(it), Tone.Neutral) }
                 }
             }
-            KeyValueCard(chargeRows(c), MONO_KEYS)
-        }
-        SaleActions(vm, r, onSend = { send = true }, onUndo = { undoAsk = true })
+            if (LocalWidthClass.current == WidthClass.Expanded) SaleActions(vm, r, onSend = { send = true }, onUndo = { undoAsk = true })
+        }, second = {
+            if (c != null) KeyValueCard(chargeRows(c), MONO_KEYS)
+            // no celular as ações ficam depois dos dados, como antes
+            if (LocalWidthClass.current != WidthClass.Expanded) SaleActions(vm, r, onSend = { send = true }, onUndo = { undoAsk = true })
+        })
     }
     if (send && c != null) SendReceiptSheet(vm, c) { send = false }
     if (undoAsk && c != null) PtDialog("Desfazer a venda?", "A venda de ${Money.brl(c.amount)} é desfeita no autorizador (desfazimento) e não será cobrada.", "Desfazer",
@@ -88,9 +92,9 @@ private fun ResultHero(r: ResultState) {
 }
 
 /**
- * Ações **desta venda**, juntas logo abaixo dos dados dela: comprovante (imprimir e enviar, só o ícone) e o que o
- * integrador faz com a transação — Desfazer e Confirmar enquanto ela aguarda confirmação, Cancelar depois; Tentar de
- * novo quando foi negada. O rodapé fica só com a navegação do app, para não se confundir com elas.
+ * Ações **desta venda**, juntas logo abaixo dos dados dela: primeiro o que o integrador faz com a transação — Desfazer e
+ * Confirmar enquanto ela aguarda confirmação, Cancelar depois; Tentar de novo quando foi negada —, e embaixo o
+ * comprovante (Imprimir e Enviar). O rodapé fica só com a navegação do app, para não se confundir com elas.
  */
 @Composable
 private fun SaleActions(vm: MainViewModel, r: ResultState, onSend: () -> Unit, onUndo: () -> Unit) {
@@ -101,21 +105,19 @@ private fun SaleActions(vm: MainViewModel, r: ResultState, onSend: () -> Unit, o
     val retry = isPay && !r.approved && r.paymentRequest != null
     if (!live && !retry) return
     SectionLabel("Esta venda")
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (live && c != null) {
-            PtIconButton(if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt, if (vm.hasPrinter) "Imprimir o comprovante" else "Ver o comprovante", { vm.push(Screen.Receipt(c)) })
-            PtIconButton(PtIcons.Send, "Enviar o comprovante", onSend)
-            when {
-                isPay && !r.confirmed -> {
-                    PtButton("Desfazer", onUndo, Modifier.weight(1f), PtButtonKind.Outlined, enabled = !busy)
-                    PtButton("Confirmar", { vm.confirm(c.nsu.orEmpty()) }, Modifier.weight(1f), PtButtonKind.Tonal, enabled = !busy)
-                }
-                isPay -> PtButton("Cancelar venda", { vm.push(Screen.Cancel(c.nsu.orEmpty())) }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Cancel)
-                else -> Spacer(Modifier.weight(1f))
-            }
-        } else if (retry && r.paymentRequest != null) {
-            PtButton("Tentar de novo", { vm.startPay(r.paymentRequest.copy(merchantChargeId = vm.newChargeId())) }, Modifier.fillMaxWidth(), PtButtonKind.Outlined, PtIcons.Refresh, enabled = !busy)
+    if (live && c != null) {
+        if (isPay) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!r.confirmed) {
+                PtButton("Desfazer", onUndo, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Undo, enabled = !busy)
+                PtButton("Confirmar", { vm.confirm(c.nsu.orEmpty()) }, Modifier.weight(1f), PtButtonKind.Primary, PtIcons.Confirm, enabled = !busy)
+            } else PtButton("Cancelar venda", { vm.push(Screen.Cancel(c.nsu.orEmpty())) }, Modifier.weight(1f), PtButtonKind.Outlined, PtIcons.Cancel)
         }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PtButton(if (vm.hasPrinter) "Imprimir" else "Comprovante", { vm.push(Screen.Receipt(c)) }, Modifier.weight(1f), PtButtonKind.Tonal, if (vm.hasPrinter) PtIcons.Print else PtIcons.Receipt)
+            PtButton("Enviar", onSend, Modifier.weight(1f), PtButtonKind.Tonal, PtIcons.Send)
+        }
+    } else if (retry && r.paymentRequest != null) {
+        PtButton("Tentar de novo", { vm.startPay(r.paymentRequest.copy(merchantChargeId = vm.newChargeId())) }, Modifier.fillMaxWidth(), PtButtonKind.Outlined, PtIcons.Refresh, enabled = !busy)
     }
 }
 
