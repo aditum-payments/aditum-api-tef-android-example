@@ -24,6 +24,7 @@ import br.com.aditum.data.v2.model.transactions.ChargeRequest
 import br.com.aditum.data.v2.model.transactions.SendReceiptRequest
 import br.com.aditum.paytrial.BuildConfig
 import br.com.aditum.paytrial.PayTrialApp
+import br.com.aditum.paytrial.client.AditumClient
 import br.com.aditum.paytrial.client.PaymentEvent
 import br.com.aditum.paytrial.client.Res
 import kotlinx.coroutines.delay
@@ -106,6 +107,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch { client.events.collect { e -> if (e is PaymentEvent.Notification) notice = e; onEvent(e) } }
         client.screen = current.tag
+        // o serviço voltou sozinho (reinstalado, morto pelo sistema, atualizado): um serviço novo não sabe de nada, então
+        // o init sai de novo, com os mesmos dados do último que deu certo — mesmo token, código e modo de telas, para
+        // continuar no mesmo estabelecimento
+        viewModelScope.launch {
+            var wasConnected = client.connection.value == AditumClient.Connection.Connected
+            client.connection.collect { c ->
+                val connected = c == AditumClient.Connection.Connected
+                if (connected && !wasConnected) lastInit?.let { reinit(it) }
+                wasConnected = connected
+            }
+        }
+    }
+
+    /** Último `InitRequest` que inicializou o terminal nesta sessão; reenviado quando o serviço reconecta sozinho. */
+    private var lastInit: InitRequest? = null
+
+    private fun reinit(req: InitRequest) {
+        if (initializing) return
+        initializing = true
+        viewModelScope.launch {
+            when (val r = client.init(req)) {
+                is Res.Ok -> if (r.value.initialized) {
+                    applyInit(r.value); say("Serviço reconectado: terminal inicializado de novo")
+                } else { initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"; reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: $initError") }
+                is Res.Fail -> { initError = r.message; reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: ${r.message}") }
+            }
+            initializing = false
+        }
+    }
+
+    private suspend fun applyInit(r: br.com.aditum.data.v2.model.init.InitResponse) {
+        terminal = r.terminalInfo; brands = r.availableBrands.orEmpty()
+        loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending()
+        // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
+        r.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
     }
 
     // ---------------------------------------------------------------- navegação
@@ -131,10 +167,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             when (val r = client.init(req)) {
                 is Res.Ok -> if (r.value.initialized) {
-                    terminal = r.value.terminalInfo; brands = r.value.availableBrands.orEmpty()
-                    loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; reset(Screen.Home); refreshPending()
-                    // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
-                    r.value.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
+                    lastInit = req; applyInit(r.value); reset(Screen.Home)
                 } else initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"
                 is Res.Fail -> initError = r.message
             }
