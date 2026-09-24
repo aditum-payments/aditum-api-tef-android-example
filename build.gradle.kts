@@ -25,9 +25,9 @@ val signingKeys = mapOf(
     "gertec-gpos700" to ("Development_GertecDeveloper_EnhancedAPP-GPOS700.jks" to "developmentgertecdeveloper_enhancedapp"),
     "gertec-gpos720" to ("AndroidDefaultDev_Enhanced-GPOS720.jks" to "androidenhanceddev"),
     "gertec-gpos760" to ("AndroidDefaultDev_Enhanced-GPOS760.jks" to "androidenhanceddev"),
-    "positivo-l3" to ("platform.jks" to "platform"),
-    "positivo-l3-2024" to ("platform_2024072401.jks" to "platform"),
-    "positivo-l400" to ("platform.jks" to "platform"),
+    "positivo-l3" to ("platform-L300-2023-ou-anterior.jks" to "platform"),
+    "positivo-l3-2024" to ("platform-L300-2024-ou-superior.jks" to "platform"),
+    "positivo-l400" to ("platform-L400.jks" to "platform"),
 )
 /** Alvo de build (modelo) → chave de assinatura. */
 val deviceKeys = mapOf(
