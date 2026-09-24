@@ -77,21 +77,25 @@ fun HomeScreen(vm: MainViewModel) {
         TwoPane(first = {
         if (conn !is AditumClient.Connection.Connected) ConnectionBanner(conn)
         // pinpad externo (TefSDK): o status dele no lugar de "Telas…"; em POS, com pinpad embutido, não faz sentido mostrar
-        LaunchedEffect(Unit) { while (true) { vm.refreshTerminalStatus(traced = false); kotlinx.coroutines.delay(5_000) } }
+        // sem consulta periódica: o app não sabe a cada instante se o pinpad está de pé, então o card mostra só o último
+        // pinpad usado (modelo e série), para se ter ideia de qual é — tocar abre a gestão de pinpads (TefSDK)
+        LaunchedEffect(Unit) { vm.refreshTerminalStatus(traced = false) }
         val status = vm.terminalStatus
+        val external = status?.externalPinpad == true
         MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model?.ifBlank { null }).joinToString(" · ").ifBlank { "Terminal ativado" },
             vm.merchantLogo,
-            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(if (st.pinpadTransport == "BLUETOOTH") "Bluetooth" + (st.pinpadName?.let { " $it" } ?: "") else null, st.pinpadModel?.takeIf { it.isNotBlank() && it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
-            screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum")
+            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadTransport to listOfNotNull(st.pinpadModel?.ifBlank { null }, st.pinpadSerialNumber?.ifBlank { null }?.let { "série $it" }).joinToString(" · ").ifBlank { "nenhum pinpad usado ainda" } },
+            screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum",
+            onClick = if (external) ({ vm.push(Screen.Pinpad) }) else null)
         ShortcutGrid(listOf(
             Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true), Shortcut("cancel", "Cancelar", PtIcons.Cancel),
             Shortcut("preauth", "Pré-autorização", PtIcons.PreAuth, enabled = m?.preAuthorizationEnabled == true),
             Shortcut("confirm", "Confirmar", PtIcons.Confirm, badge = vm.pendingCount), Shortcut("lookup", "Consultar", PtIcons.Lookup),
             Shortcut("report", "Relatório", PtIcons.Report), Shortcut("more", "Mais", PtIcons.More),
-        )) { s ->
+        ) + listOfNotNull(if (external) Shortcut("pinpad", "Pinpad", if (status?.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb) else null)) { s ->
             when (s.id) {
                 "sale" -> vm.push(Screen.Amount()); "cancel" -> vm.push(Screen.Cancel()); "preauth" -> vm.push(Screen.Amount(PayOperationType.PreAuthorization))
-                "confirm" -> vm.push(Screen.Confirm); "lookup" -> vm.push(Screen.Lookup()); "report" -> vm.push(Screen.Report); "more" -> vm.push(Screen.More)
+                "confirm" -> vm.push(Screen.Confirm); "lookup" -> vm.push(Screen.Lookup()); "report" -> vm.push(Screen.Report); "more" -> vm.push(Screen.More); "pinpad" -> vm.push(Screen.Pinpad)
             }
         }
         }, second = {
@@ -122,9 +126,10 @@ fun maskedHolder(n: String?): String = Redactor.name(n) ?: "—"
  * Sem logo baixado, o da Aditum (o mesmo fallback do standalone). Em tablet a faixa cresce.
  */
 @Composable
-fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<Boolean, String>?, screens: String) {
+fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<String?, String>?, screens: String, onClick: (() -> Unit)? = null) {
     val (height, maxWidth) = when (LocalWidthClass.current) { WidthClass.Compact -> 44.dp to 132.dp; WidthClass.Medium -> 56.dp to 180.dp; WidthClass.Expanded -> 72.dp to 240.dp }
-    androidx.compose.material3.Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    val content: @Composable () -> Unit = {
         androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             val painter = if (logo != null) androidx.compose.ui.graphics.painter.BitmapPainter(logo.asImageBitmap()) else androidx.compose.ui.res.painterResource(br.com.aditum.paytrial.R.drawable.aditum_logo)
             androidx.compose.foundation.Image(painter, "Logo do estabelecimento", Modifier.height(height).widthIn(max = maxWidth), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
@@ -132,16 +137,19 @@ fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<Boo
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 if (pinpad != null) {
-                    val (ok, details) = pinpad
-                    val color = if (ok) PtTheme.status.success else MaterialTheme.colorScheme.error
+                    // último pinpad usado, sem dizer "conectado": o enlace só existe durante a operação
+                    val (transport, details) = pinpad
                     androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        PtIcon(PtIcons.Terminal, null, tint = color, size = 16.dp); Spacer(Modifier.width(4.dp))
-                        Text((if (ok) "Pinpad conectado" else "Pinpad desconectado") + (if (details.isEmpty()) "" else " · $details"), style = MaterialTheme.typography.labelMedium, color = color)
+                        PtIcon(when (transport) { "BLUETOOTH" -> PtIcons.Bluetooth; "USB" -> PtIcons.Usb; else -> PtIcons.Terminal }, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 16.dp); Spacer(Modifier.width(4.dp))
+                        Text("Pinpad $details", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else Text(screens, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (onClick != null) PtIcon(PtIcons.Chevron, "Gerenciar pinpads", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+    if (onClick != null) androidx.compose.material3.Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = colors) { content() }
+    else androidx.compose.material3.Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = colors) { content() }
 }
 
 /** CNPJ com máscara (00.000.000/0000-00); outro formato volta como veio. */

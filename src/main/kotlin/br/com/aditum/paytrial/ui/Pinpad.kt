@@ -25,22 +25,25 @@ fun PinpadScreen(vm: MainViewModel) {
         IconButton(onClick = { vm.scanPinpads() }, enabled = !vm.scanning) { PtIcon(PtIcons.Refresh, "Buscar de novo") }
     }) {
         TwoPane(first = {
-            SectionLabel("Agora")
+            SectionLabel("Último pinpad usado")
             val now = status?.takeIf { it.externalPinpad }
+            // sem afirmar "conectado": o enlace só existe durante a operação (não há consulta periódica)
             if (now == null) Banner("Sem pinpad externo", Tone.Info, "Este terminal tem o pinpad embutido.")
-            else Banner(
-                if (now.pinpadConnected) "Pinpad conectado" else "Pinpad desconectado", if (now.pinpadConnected) Tone.Success else Tone.Warning,
-                listOfNotNull(now.pinpadTransport?.let { if (it == "BLUETOOTH") "Bluetooth" else "USB" }, now.pinpadName, now.pinpadModel, now.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ").ifBlank { "ainda não conectou nesta sessão" },
-                if (now.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb,
-            )
+            else Banner(listOfNotNull(now.pinpadModel?.ifBlank { null }, now.pinpadSerialNumber?.ifBlank { null }?.let { "série $it" }).joinToString(" · ").ifBlank { "Nenhum pinpad usado ainda" }, Tone.Neutral,
+                listOfNotNull(now.pinpadTransport?.let { if (it == "BLUETOOTH") "Bluetooth" else "USB" }, now.pinpadName).joinToString(" · ").ifBlank { null },
+                if (now.pinpadTransport == "BLUETOOTH") PtIcons.Bluetooth else PtIcons.Usb)
             Text("Automático: o pinpad da USB; sem ele, um Bluetooth já pareado (inclusive pelas Configurações do Android) com porta serial conecta sozinho. Qualquer aparelho da lista conecta quando você toca nele (não pareado: o Android pede o pareamento).",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }, second = {
             SectionLabel("Escolha")
             if (vm.scanning) { Text("Buscando aparelhos por perto… (30 s) — toque em um para conectar", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (vm.busy == "selectPinpad") { Text("Conectando… (Bluetooth não pareado: aceite o pareamento no Android)", style = MaterialTheme.typography.bodyMedium); LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            ListRow("Automático", icon = PtIcons.Refresh, details = listOf("selectPinpad(null)"),
+            ListRow("Automático", icon = PtIcons.Refresh, details = listOf("USB; sem ele, Bluetooth pareado com porta serial"),
                 trailing = { if (list != null && list.none { it.selected }) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = { vm.choosePinpad(null) })
+            // trocar para USB mesmo sem ele plugado agora: vale na próxima operação
+            val usbChosen = list?.any { it.selected && it.transport != "BLUETOOTH" } == true
+            if (list?.none { it.transport != "BLUETOOTH" } != false) ListRow("Só USB", icon = PtIcons.Usb, details = listOf("o pinpad plugado na USB (nenhum agora)"),
+                trailing = { if (usbChosen) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = { vm.choosePinpad(PinpadDevice(transport = "USB", id = "usb", name = "USB")) })
             when {
                 list == null -> LinearProgressIndicator(Modifier.fillMaxWidth())
                 list.isEmpty() && !vm.scanning -> Text("Nada na USB, nenhum pareado e nada respondeu à busca. Deixe o pinpad pronto para parear e toque em buscar de novo.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -57,7 +60,7 @@ private fun PinpadRow(d: PinpadDevice, onConnect: () -> Unit, onDisconnect: () -
     val bt = d.transport == "BLUETOOTH"
     Column {
         ListRow(d.name.ifBlank { d.id }, icon = if (bt) PtIcons.Bluetooth else PtIcons.Usb,
-            details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
+            details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "último usado" else null,
                 if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && d.serialPort) "porta serial" else null).joinToString(" · ")),
             trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onConnect)
         // conectar é tocar na linha; desconectar vale para o escolhido/conectado; esquecer, para Bluetooth pareado
