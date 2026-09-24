@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.aditum.data.v2.enums.PayOperationType
@@ -71,8 +72,13 @@ fun HomeScreen(vm: MainViewModel) {
     }) {
         TwoPane(first = {
         if (conn !is AditumClient.Connection.Connected) ConnectionBanner(conn)
-        Banner(listOfNotNull(m?.document?.let { "CNPJ $it" }, vm.terminal?.model).joinToString(" · ").ifBlank { "Terminal ativado" }, Tone.Neutral,
-            if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum", PtIcons.Store)
+        // pinpad externo (TefSDK): o status dele no lugar de "Telas…"; em POS, com pinpad embutido, não faz sentido mostrar
+        LaunchedEffect(Unit) { while (true) { vm.refreshTerminalStatus(traced = false); kotlinx.coroutines.delay(5_000) } }
+        val status = vm.terminalStatus
+        MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model).joinToString(" · ").ifBlank { "Terminal ativado" },
+            vm.merchantLogo,
+            pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadConnected to listOfNotNull(st.pinpadModel?.takeIf { it != vm.terminal?.model }, st.pinpadSerialNumber?.let { "série $it" }).joinToString(" · ") },
+            screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum")
         ShortcutGrid(listOf(
             Shortcut("sale", "Nova venda", PtIcons.Sale, highlight = true), Shortcut("cancel", "Cancelar", PtIcons.Cancel),
             Shortcut("preauth", "Pré-autorização", PtIcons.PreAuth, enabled = m?.preAuthorizationEnabled == true),
@@ -92,6 +98,11 @@ fun HomeScreen(vm: MainViewModel) {
                     details = listOf(listOf(Labels.time(c.creationDateTime), Labels.brand(c.brand)).filter { it.isNotBlank() }.joinToString(" · ")),
                     monoDetail = c.nsu?.let { "NSU $it" }, value = Money.brl(c.amount), onClick = { vm.push(Screen.Lookup(c.nsu.orEmpty())) })
             }
+        } else if (LocalWidthClass.current == WidthClass.Expanded) {
+            // em tablet a coluna aparece desde o início, em vez de um vazio ao lado da grade
+            SectionLabel("Últimas transações")
+            Text("Nenhuma transação nesta sessão. As vendas aprovadas aparecem aqui, com o NSU para consultar.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         })
     }
@@ -100,3 +111,34 @@ fun HomeScreen(vm: MainViewModel) {
 /** Cartão mascarado para exibição (só os 4 últimos) e portador em iniciais: a mesma regra do rastreio. */
 fun maskedCard(n: String?): String = Redactor.pan(n) ?: "—"
 fun maskedHolder(n: String?): String = Redactor.name(n) ?: "—"
+
+/**
+ * Card do estabelecimento, como o da home do standalone (`MerchantHeader`): logo em faixa — altura fixa, largura pela
+ * proporção da própria imagem, sem fundo, sobre a cor do card — e, com pinpad externo (TefSDK), o estado dele em chip.
+ * Sem logo baixado, o da Aditum (o mesmo fallback do standalone). Em tablet a faixa cresce.
+ */
+@Composable
+fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<Boolean, String>?, screens: String) {
+    val (height, maxWidth) = when (LocalWidthClass.current) { WidthClass.Compact -> 44.dp to 132.dp; WidthClass.Medium -> 56.dp to 180.dp; WidthClass.Expanded -> 72.dp to 240.dp }
+    androidx.compose.material3.Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            val painter = if (logo != null) androidx.compose.ui.graphics.painter.BitmapPainter(logo.asImageBitmap()) else androidx.compose.ui.res.painterResource(br.com.aditum.paytrial.R.drawable.aditum_logo)
+            androidx.compose.foundation.Image(painter, "Logo do estabelecimento", Modifier.height(height).widthIn(max = maxWidth), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                if (pinpad != null) {
+                    val (ok, details) = pinpad
+                    val color = if (ok) PtTheme.status.success else MaterialTheme.colorScheme.error
+                    androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        PtIcon(PtIcons.Terminal, null, tint = color, size = 16.dp); Spacer(Modifier.width(4.dp))
+                        Text((if (ok) "Pinpad conectado" else "Pinpad desconectado") + (if (details.isEmpty()) "" else " · $details"), style = MaterialTheme.typography.labelMedium, color = color)
+                    }
+                } else Text(screens, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** CNPJ com máscara (00.000.000/0000-00); outro formato volta como veio. */
+private fun cnpj(d: String): String = d.filter(Char::isDigit).let { if (it.length == 14) "${it.take(2)}.${it.substring(2, 5)}.${it.substring(5, 8)}/${it.substring(8, 12)}-${it.takeLast(2)}" else d }

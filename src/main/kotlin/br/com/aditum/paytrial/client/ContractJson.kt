@@ -27,6 +27,7 @@ object ContractJson {
         null -> JSONObject.NULL
         is String, is Boolean, is Int, is Long, is Double, is Float, is Short, is Byte -> value
         is Char -> value.toString()
+        is ByteArray -> "<${value.size} bytes>"   // logo do getMerchantCustomization: o tamanho basta no rastreio
         is Enum<*> -> value.name
         is Date -> synchronized(iso) { iso.format(value) }
         is Collection<*> -> JSONArray(value.map { toJson(it) })

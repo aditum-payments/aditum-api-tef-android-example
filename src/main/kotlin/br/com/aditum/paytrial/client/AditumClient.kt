@@ -16,7 +16,9 @@ import br.com.aditum.data.v2.enums.AbecsCommands
 import br.com.aditum.data.v2.enums.PrintStatus
 import br.com.aditum.data.v2.enums.TransactionStatus
 import br.com.aditum.data.v2.model.Charge
+import br.com.aditum.data.v2.model.MerchantCustomization
 import br.com.aditum.data.v2.model.MerchantData
+import br.com.aditum.data.v2.model.TerminalStatus
 import br.com.aditum.data.v2.model.callbacks.GetClearDataFinishedCallback
 import br.com.aditum.data.v2.model.callbacks.GetClearDataRequest
 import br.com.aditum.data.v2.model.callbacks.GetMenuSelectionFinishedCallback
@@ -226,9 +228,11 @@ class AditumClient(context: Context, val trace: TraceLog) {
 
     // ---------------------------------------------------------------- chamadas
 
-    private suspend fun <T> call(method: String, request: Any?, timeoutMs: Long, invoke: (IAditumSdkService, (T) -> Unit) -> Unit): Res<T> {
-        val id = trace.begin(method, screen, if (request == null) null else ContractJson.redacted(request))
-        val svc = service ?: return Res.Fail("Serviço da Aditum desconectado").also { trace.end(id, null, it.message) }
+    /** [traced] = false para consultas periódicas (status do pinpad), que só encheriam o console. */
+    private suspend fun <T> call(method: String, request: Any?, timeoutMs: Long, traced: Boolean = true, invoke: (IAditumSdkService, (T) -> Unit) -> Unit): Res<T> {
+        val trace = if (traced) this.trace else null
+        val id = trace?.begin(method, screen, if (request == null) null else ContractJson.redacted(request))
+        val svc = service ?: return Res.Fail("Serviço da Aditum desconectado").also { if (id != null) trace?.end(id, null, it.message) }
         return try {
             val value = withTimeout(timeoutMs) {
                 withContext(Dispatchers.IO) {
@@ -237,12 +241,12 @@ class AditumClient(context: Context, val trace: TraceLog) {
                     }
                 }
             }
-            trace.end(id, ContractJson.redacted(value), null); Res.Ok(value)
+            if (id != null) trace?.end(id, ContractJson.redacted(value), null); Res.Ok(value)
         } catch (e: TimeoutCancellationException) {
-            Res.Fail("Sem resposta do serviço em ${timeoutMs / 1000} s").also { trace.end(id, null, it.message) }
+            Res.Fail("Sem resposta do serviço em ${timeoutMs / 1000} s").also { if (id != null) trace?.end(id, null, it.message) }
         } catch (e: Exception) {
             Log.w(TAG, "$method falhou", e)
-            Res.Fail("Falha ao chamar $method: ${e.message ?: e.javaClass.simpleName}").also { trace.end(id, null, it.message) }
+            Res.Fail("Falha ao chamar $method: ${e.message ?: e.javaClass.simpleName}").also { if (id != null) trace?.end(id, null, it.message) }
         }
     }
 
@@ -257,6 +261,12 @@ class AditumClient(context: Context, val trace: TraceLog) {
     suspend fun generateReport(req: ReportRequest): Res<ReportResponse> = call("generateReport", req, MIN) { s, done -> s.generateReport(req, object : ReportResponseCallback.Stub() { override fun onResponse(r: ReportResponse?) = done(r ?: ReportResponse()) }) }
     /** Síncrono no contrato: roda fora da thread de UI. */
     suspend fun merchantData(): Res<MerchantData> = call("getMerchantData", null, MIN / 2) { s, done -> done(s.merchantData ?: MerchantData()) }
+    /**
+     * Opcionais do contrato 3.0.0 (fim da interface: não mexem nos códigos das chamadas antigas). Serviço 2.x não tem o
+     * método e responde `null`; aí o app segue com o próprio logo e sem status do pinpad.
+     */
+    suspend fun merchantCustomization(): Res<MerchantCustomization?> = call("getMerchantCustomization", null, MIN / 2) { s, done -> done(s.merchantCustomization) }
+    suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
     suspend fun sendReceipt(req: SendReceiptRequest): Res<Boolean> = call("sendReceipt", req, MIN / 2) { s, done -> done(s.sendReceipt(req)) }
     /** O terminal tem impressora? O contrato responde com `getDeviceSdk().printerSdk` nulo quando não tem. */
     suspend fun hasPrinter(): Res<Boolean> = call("getDeviceSdk", null, MIN / 2) { s, done -> done(s.deviceSdk?.printerSdk != null) }

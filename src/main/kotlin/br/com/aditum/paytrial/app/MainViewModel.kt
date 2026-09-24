@@ -22,6 +22,7 @@ import br.com.aditum.data.v2.model.report.ReportRequest
 import br.com.aditum.data.v2.model.report.ReportResponse
 import br.com.aditum.data.v2.model.transactions.ChargeRequest
 import br.com.aditum.data.v2.model.transactions.SendReceiptRequest
+import br.com.aditum.data.v2.model.TerminalStatus
 import br.com.aditum.paytrial.BuildConfig
 import br.com.aditum.paytrial.PayTrialApp
 import br.com.aditum.paytrial.client.AditumClient
@@ -85,6 +86,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     var merchant by mutableStateOf<MerchantData?>(null); private set
     var terminal by mutableStateOf<TerminalInfo?>(null); private set
+    /** Logo do estabelecimento (getMerchantCustomization, 3.0.0); `null` = sem logo ou serviço antigo → logo da Aditum. */
+    var merchantLogo by mutableStateOf<android.graphics.Bitmap?>(null); private set
+    /** Status do terminal (getTerminalStatus, 3.0.0): pinpad externo no TefSDK. */
+    var terminalStatus by mutableStateOf<TerminalStatus?>(null); private set
     var brands by mutableStateOf<List<CardBrand>>(emptyList()); private set
     var initializing by mutableStateOf(false); private set
     var initError by mutableStateOf<String?>(null); private set
@@ -144,7 +149,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun applyInit(r: br.com.aditum.data.v2.model.init.InitResponse) {
         terminal = r.terminalInfo; brands = r.availableBrands.orEmpty()
-        loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending()
+        loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending(); loadCustomization(); refreshTerminalStatus()
         // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
         r.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
         if (r.errors.orEmpty().any { it.message == USE_ONLY_SDK_FORCED }) {
@@ -187,6 +192,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun loadMerchant(): Boolean = when (val r = client.merchantData()) { is Res.Ok -> { merchant = r.value; true }; is Res.Fail -> { say(r.message); false } }
+    suspend fun loadCustomization() {
+        val c = (client.merchantCustomization() as? Res.Ok)?.value
+        merchantLogo = c?.logo?.let { runCatching { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
+    }
+    suspend fun refreshTerminalStatus(traced: Boolean = true) { terminalStatus = (client.terminalStatus(traced) as? Res.Ok)?.value }
     fun reloadMerchant() = viewModelScope.launch { if (loadMerchant()) say("Estabelecimento recarregado") }
 
     fun refreshPending() = viewModelScope.launch { (client.pendingTransactions() as? Res.Ok)?.let { pendingCount = it.value.size } }
@@ -319,7 +329,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun updateTables() { busy = "updateEmvTables"; viewModelScope.launch { val r = client.updateEmvTables(); busy = null; say(if (r is Res.Ok && r.value) "Tabelas atualizadas" else (r as? Res.Fail)?.message ?: "As tabelas não foram atualizadas") } }
+    fun updateTables() { busy = "updateEmvTables"; viewModelScope.launch { val r = client.updateEmvTables(); busy = null; if (r is Res.Ok && r.value) { loadMerchant(); loadCustomization() }; say(if (r is Res.Ok && r.value) "Tabelas atualizadas" else (r as? Res.Fail)?.message ?: "As tabelas não foram atualizadas") } }
 
     fun deactivate() {
         busy = "deactivate"

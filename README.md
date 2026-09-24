@@ -107,6 +107,9 @@ O que este app faz e que todo integrador precisa fazer (ver `client/AditumClient
    desfazer é `cancel` com o NSU dela; `pendingTransactions` lista o que falta confirmar.
 6. **Abortar:** `abortOperation` interrompe a operação em andamento (o voltar do Android faz isso durante a venda).
 7. **Impressão:** `getDeviceSdk().print(bitmap, callback)` com o comprovante já desenhado (`app/ReceiptPrinter.kt`).
+8. **Opcionais do 3.0.0** (no fim da interface; serviço 2.x responde `null`): `getMerchantCustomization()` traz o logo
+   e as cores do estabelecimento — sem logo, use o seu (o Pay Trial usa o da Aditum, como o standalone) —; e
+   `getTerminalStatus()` diz se há pinpad externo (TefSDK) e se ele está plugado.
 
 ## Dados crus e censura
 
