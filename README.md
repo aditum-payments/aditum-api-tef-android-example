@@ -46,15 +46,20 @@ monta um por dispositivo nos mesmos `--family`/`--model`/`--type` do Android.
 **Token do integrador** (`InitRequest.applicationToken`): `-Ppaytrial.token=…`, variável `PAYTRIAL_TOKEN` ou
 `paytrial.token` em `gradle.properties`. O valor versionado (`paytrial-dev-token`) só serve em desenvolvimento.
 
-**Assinatura**, com as mesmas regras e os mesmos segredos do serviço:
-- o **release** sai com a chave do dispositivo: o `.jks` em `-Ppaytrial.signing.dir` (padrão: `certs/` do `aditum-tef`,
-  dois níveis acima) e as senhas em `ADITUM_SIGNING_<CHAVE>_STORE` / `_KEY` / `_ALIAS` (ex.:
-  `ADITUM_SIGNING_GERTEC_GPOS760_STORE`) ou `-Ppaytrial.signing.<chave>.storePassword`;
-- sem a chave, fora do CI o release sai com a chave de debug e um aviso; no CI (`CI`/`TF_BUILD`, ou
-  `-Ppaytrial.signing.strict=true`) o build falha;
-- o **debug** usa sempre a chave de debug, como o terminal;
+**Assinatura**, com as mesmas regras e os mesmos segredos do serviço (debug e release):
+- sai com a **chave do fabricante** do dispositivo quando existe (Gertec GPOS, Positivo L300/L400); sem ela, com a
+  da **Aditum** (PAX, Sunmi, Ingenico, Verifone, TefSDK, e sem `-Ppaytrial.device`); a de debug do Android só se nem a
+  da Aditum estiver disponível, com aviso. O log do build diz qual chave assinou;
+- o `.jks` vem de `-Ppaytrial.signing.dir` (padrão: `certs/` do `aditum-tef`, dois níveis acima) e as senhas, nesta
+  ordem, de `-Ppaytrial.signing.<chave>.storePassword`, de `ADITUM_SIGNING_<CHAVE>_STORE` / `_KEY` / `_ALIAS` (ex.:
+  `ADITUM_SIGNING_GERTEC_GPOS760_STORE`) ou do `signing.properties` do `aditum-tef` (`-Ppaytrial.signing.properties`
+  para outro arquivo). De dentro do `aditum-tef` assina sem nenhum passo manual;
+- no CI (`CI`/`TF_BUILD`, ou `-Ppaytrial.signing.strict=true`) o release sem a chave do dispositivo falha;
 - `-Ppaytrial.keystore=/caminho.jks` com `PAYTRIAL_STORE_PASSWORD`, `PAYTRIAL_KEY_ALIAS` e `PAYTRIAL_KEY_PASSWORD` (um
   `.jks` só) vence a tabela.
+
+Um Pay Trial já instalado com outra chave (os de antes de 25/09 saíam com a de debug do Android) não aceita o novo por
+cima: desinstale antes (`adb uninstall br.com.aditum.paytrial`).
 
 O dispositivo e o ambiente do build aparecem em **Mais › Sobre**.
 

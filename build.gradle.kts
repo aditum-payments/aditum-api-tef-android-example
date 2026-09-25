@@ -1,3 +1,4 @@
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -69,17 +70,46 @@ val envToken = if (environment.equals("production", ignoreCase = true)) "P" else
 if (envToken == "P" && (partnerToken.isBlank() || partnerToken == "paytrial-dev-token"))
     error("paytrial: build de produção exige o token do integrador de produção (-Ppaytrial.token ou PAYTRIAL_TOKEN)")
 
-// Assinatura, com as mesmas regras e os mesmos segredos do APK do serviço (doc 14 §2): release assinado com a chave do
-// dispositivo — arquivo em -Ppaytrial.signing.dir (padrão: certs/ do aditum-tef, dois níveis acima), senhas em
-// ADITUM_SIGNING_<CHAVE>_STORE / _KEY / _ALIAS ou -Ppaytrial.signing.<chave>.storePassword / .keyPassword / .keyAlias.
-// No CI (CI/TF_BUILD) o release falha sem a chave; fora dele sai com a chave de debug e um aviso. Debug usa sempre a
-// chave de debug, como o terminal. -Ppaytrial.keystore=<arquivo> + PAYTRIAL_STORE_PASSWORD/_KEY_ALIAS/_KEY_PASSWORD
-// (um .jks só, o jeito antigo) vence a tabela.
+// Assinatura, com as mesmas regras e os mesmos segredos do APK do serviço (doc 14 §2; decisão de 24/09): debug e release
+// assinados com a chave do fabricante do dispositivo quando existe; sem ela, com a da Aditum; a de debug do Android só
+// se nem a da Aditum estiver disponível, com aviso. Arquivos em -Ppaytrial.signing.dir (padrão: certs/ do aditum-tef, dois
+// níveis acima); senhas, nesta ordem: -Ppaytrial.signing.<chave>.storePassword / .keyPassword / .keyAlias, ambiente
+// ADITUM_SIGNING_<CHAVE>_STORE / _KEY / _ALIAS, e o signing.properties do aditum-tef (aditum.signing.<chave>.*, commitado
+// de propósito), em -Ppaytrial.signing.properties. Fora do aditum-tef, sem esses arquivos, sai com a de debug. No CI
+// (CI/TF_BUILD) o release falha sem a chave do dispositivo. -Ppaytrial.keystore=<arquivo> + PAYTRIAL_STORE_PASSWORD /
+// _KEY_ALIAS / _KEY_PASSWORD (um .jks só, o jeito antigo) vence a tabela.
 val signingDir = file(providers.gradleProperty("paytrial.signing.dir").orNull ?: "../../certs")
 val signingStrict = (providers.gradleProperty("paytrial.signing.strict").orNull?.toBoolean()) ?: (System.getenv("CI") != null || System.getenv("TF_BUILD") != null)
 val explicitKeystore = providers.gradleProperty("paytrial.keystore").orNull
-fun secret(env: String, property: String): String? =
+val signingFile = Properties().apply {
+    file(providers.gradleProperty("paytrial.signing.properties").orNull ?: "../../signing.properties").takeIf { it.isFile }
+        ?.reader(Charsets.UTF_8)?.use { load(it) }
+}
+fun secret(env: String, property: String, fileKey: String? = null): String? =
     providers.gradleProperty(property).orNull?.takeIf { it.isNotBlank() } ?: System.getenv(env)?.takeIf { it.isNotBlank() }
+        ?: fileKey?.let { signingFile.getProperty(it) }?.takeIf { it.isNotBlank() }
+
+/** Chave pronta para assinar (arquivo + senhas), ou o motivo de não estar. */
+data class ResolvedKey(val id: String, val file: File, val store: String, val alias: String, val key: String)
+fun resolveKey(keyId: String): Pair<ResolvedKey?, String?> {
+    val (jks, alias) = signingKeys.getValue(keyId)
+    val prefix = "ADITUM_SIGNING_" + keyId.uppercase().replace('-', '_')
+    val store = secret("${prefix}_STORE", "paytrial.signing.$keyId.storePassword", "aditum.signing.$keyId.storePassword")
+    val keyFile = signingDir.resolve(jks)
+    val why = when { !keyFile.isFile -> "arquivo ${keyFile.path} não encontrado"; store == null -> "senha ausente: defina ${prefix}_STORE (ou aditum.signing.$keyId.storePassword no signing.properties)"; else -> null }
+    if (why != null) return null to why
+    return ResolvedKey(keyId, keyFile, store!!,
+        secret("${prefix}_ALIAS", "paytrial.signing.$keyId.keyAlias", "aditum.signing.$keyId.keyAlias") ?: alias,
+        secret("${prefix}_KEY", "paytrial.signing.$keyId.keyPassword", "aditum.signing.$keyId.keyPassword") ?: store) to null
+}
+val deviceKeyId = device?.let { deviceKeys.getValue(it) }
+val (deviceKey, deviceKeyWhy) = deviceKeyId?.let { resolveKey(it) } ?: (null to null)
+val chosenKey: ResolvedKey? = deviceKey ?: if (deviceKeyId != "aditum") resolveKey("aditum").first else null
+if (explicitKeystore == null) when {
+    chosenKey == null -> logger.warn("paytrial: sem a chave ${deviceKeyId?.let { "'$it' nem a " } ?: ""}'aditum' (${deviceKeyWhy ?: resolveKey("aditum").second}): sai com a chave de DEBUG do Android — instala no aparelho de desenvolvimento, não serve para o fabricante")
+    deviceKeyId != null && chosenKey.id != deviceKeyId -> logger.warn("paytrial: sem a chave '$deviceKeyId' do $device ($deviceKeyWhy): assinado com a da Aditum")
+    else -> logger.lifecycle("paytrial: assinatura com a chave '${chosenKey.id}' (${chosenKey.file.name})")
+}
 
 android {
     namespace = "br.com.aditum.paytrial"
@@ -104,26 +134,19 @@ android {
             storePassword = System.getenv("PAYTRIAL_STORE_PASSWORD")
             keyAlias = System.getenv("PAYTRIAL_KEY_ALIAS")
             keyPassword = System.getenv("PAYTRIAL_KEY_PASSWORD")
-        } else if (device != null) {
-            val keyId = deviceKeys.getValue(device)
-            val (jks, alias) = signingKeys.getValue(keyId)
-            val prefix = "ADITUM_SIGNING_" + keyId.uppercase().replace('-', '_')
-            val store = secret("${prefix}_STORE", "paytrial.signing.$keyId.storePassword")
-            val keyFile = signingDir.resolve(jks)
-            val why = when { !keyFile.isFile -> "arquivo ${keyFile.path} não encontrado"; store == null -> "senha ausente: defina ${prefix}_STORE (e ${prefix}_KEY se diferente)"; else -> null }
-            if (why == null) create("terminal") {
-                storeFile = keyFile; storePassword = store
-                keyAlias = secret("${prefix}_ALIAS", "paytrial.signing.$keyId.keyAlias") ?: alias
-                keyPassword = secret("${prefix}_KEY", "paytrial.signing.$keyId.keyPassword") ?: store
-                enableV1Signing = true; enableV2Signing = true
-            } else if (signingStrict) error("paytrial: o release para $device exige a chave '$keyId' — $why")
-            else logger.warn("paytrial: release para $device SEM a chave '$keyId' ($why): sai com a chave de DEBUG — instala no aparelho de desenvolvimento, não serve para o fabricante")
+        } else if (chosenKey != null) create("terminal") {
+            storeFile = chosenKey.file; storePassword = chosenKey.store; keyAlias = chosenKey.alias; keyPassword = chosenKey.key
+            enableV1Signing = true; enableV2Signing = true
         }
     }
     buildTypes {
-        debug { if (explicitKeystore != null) signingConfig = signingConfigs.getByName("terminal") }
+        // debug e release com a mesma chave, como o terminal: o APK de teste instala por cima do de release e passa na
+        // lista branca dos terminais que exigem a chave do fabricante (L300/L400, GPOS Enhanced)
+        debug { signingConfig = signingConfigs.findByName("terminal") ?: signingConfigs.getByName("debug") }
         release {
             isMinifyEnabled = false
+            if (signingStrict && explicitKeystore == null && deviceKeyId != null && deviceKey == null)
+                error("paytrial: o release para $device exige a chave '$deviceKeyId' — $deviceKeyWhy")
             signingConfig = signingConfigs.findByName("terminal") ?: signingConfigs.getByName("debug")
         }
     }
@@ -135,7 +158,7 @@ kotlin { jvmToolchain(17) }
 
 // nome do artefato como o do serviço: AditumPayTrial-A2A-<D|P>-<MODELO>-<versão>+<hash>-<tipo>.apk em build/dist/
 // (sem -Ppaytrial.device, sem o modelo: AditumPayTrial-A2A-<D|P>-<versão>+<hash>-<tipo>.apk)
-if (device == null) logger.lifecycle("paytrial: sem -Ppaytrial.device o APK sai sem dispositivo no nome e o release com a chave de debug")
+if (device == null) logger.lifecycle("paytrial: sem -Ppaytrial.device o APK sai sem dispositivo no nome")
 androidComponents {
     onVariants { v ->
         val name = "AditumPayTrial-A2A-$envToken-${if (deviceToken.isEmpty()) "" else "$deviceToken-"}$appVersion+$gitHash-${v.buildType}.apk"
