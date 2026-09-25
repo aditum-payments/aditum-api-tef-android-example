@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- permissão que o serviço App2App da Aditum exige de quem se liga a ele -->
     <uses-permission android:name="br.com.aditum.smartpostef.permission.BIND_TEF" />
+    <!-- só para saber se o Bluetooth está ligado na tela Pinpad (BluetoothAdapter.isEnabled); do Android 12 em diante não precisa -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <!-- Android 11+: o app precisa declarar que enxerga o pacote do serviço -->
     <queries><package android:name="br.com.aditum.smartpostef" /></queries>
     <application

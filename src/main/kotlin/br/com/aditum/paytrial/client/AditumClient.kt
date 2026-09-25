@@ -270,7 +270,7 @@ class AditumClient(context: Context, val trace: TraceLog) {
      */
     suspend fun merchantCustomization(): Res<MerchantCustomization?> = call("getMerchantCustomization", null, MIN / 2) { s, done -> done(s.merchantCustomization) }
     suspend fun terminalStatus(traced: Boolean = true): Res<TerminalStatus?> = call("getTerminalStatus", null, MIN / 4, traced) { s, done -> done(s.terminalStatus) }
-    suspend fun listPinpads(): Res<List<PinpadDevice>> = call("listPinpads", null, MIN + MIN / 2) { s, done -> done(s.listPinpads().orEmpty()) }
+    suspend fun listPinpads(traced: Boolean = true): Res<List<PinpadDevice>> = call("listPinpads", null, MIN + MIN / 2, traced) { s, done -> done(s.listPinpads().orEmpty()) }
     suspend fun selectPinpad(d: PinpadDevice?): Res<Boolean> = call("selectPinpad", d, 3 * MIN) { s, done -> done(s.selectPinpad(d)) }
     /**
      * Busca de pinpads (3.0.0): cada aparelho chega em [onFound] assim que o serviço o acha, como na tela de pareamento

@@ -207,6 +207,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Pinpads externos (TefSDK, 3.0.0): null = carregando; vazio = nada na USB nem pareado (ou serviço antigo). */
     var pinpads by mutableStateOf<List<br.com.aditum.data.v2.model.PinpadDevice>?>(null); private set
     fun loadPinpads() = viewModelScope.launch { pinpads = null; pinpads = (client.listPinpads() as? Res.Ok)?.value.orEmpty(); refreshTerminalStatus() }
+    /** Relê a lista sem voltar ao "carregando" e sem rastro: é a vigia da USB da tela Pinpad (a cada 2 s). */
+    suspend fun refreshPinpads() { (client.listPinpads(traced = false) as? Res.Ok)?.value?.let { fresh -> if (!scanning) pinpads = fresh } }
+    /** Pinpad plugado na USB agora (a linha "Só USB" é só uma escolha, não um aparelho). */
+    val usbPinpadPlugged: Boolean get() = pinpads?.any { it.transport != "BLUETOOTH" } == true
     /** Busca em curso: a lista vai crescendo com cada aparelho achado. */
     var scanning by mutableStateOf(false); private set
     fun scanPinpads() {
