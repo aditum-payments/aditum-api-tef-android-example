@@ -11,8 +11,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -106,9 +109,53 @@ val PtShapes = Shapes(
 
 val MonoStyle = TextStyle(fontFamily = PtMono, fontSize = 12.sp, lineHeight = 16.sp)
 
+/**
+ * Cores do estabelecimento (`getMerchantCustomization`, 3.0.0): primária e secundária do portal. Nulas = as do Pay Trial.
+ * Cores de estado (sucesso, alerta, erro) não mudam com a marca.
+ */
+@Immutable
+data class PtBrand(val primary: Color? = null, val secondary: Color? = null) {
+    companion object {
+        /** `#RRGGBB` (ou `#AARRGGBB`) do serviço; texto inválido ou vazio = sem cor. */
+        fun parse(hex: String?): Color? = hex?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let { runCatching { Color(android.graphics.Color.parseColor(if (it.startsWith("#")) it else "#$it")) }.getOrNull() }
+    }
+}
+
+private fun contrast(a: Color, b: Color): Float {
+    val (l1, l2) = a.luminance() to b.luminance()
+    return (maxOf(l1, l2) + 0.05f) / (minOf(l1, l2) + 0.05f)
+}
+/** A cor da marca, escurecida ou clareada só o bastante para ler sobre `bg` (a do portal pode ser um amarelo-claro). */
+private fun readable(seed: Color, bg: Color, min: Float, towards: Color): Color {
+    var t = 0f; var c = seed
+    while (contrast(c, bg) < min && t < 1f) { t += 0.05f; c = lerp(seed, towards, t) }
+    return c
+}
+private fun onColor(c: Color): Color = if (contrast(c, Color.White) >= contrast(c, Color(0xFF1C1B1F))) Color.White else Color(0xFF1C1B1F)
+
+/** Troca primária e secundária do esquema pelas da marca, com as variações (container, "on") derivadas da semente. */
+private fun ColorScheme.branded(brand: PtBrand, dark: Boolean): ColorScheme {
+    var s = this
+    brand.primary?.let { seed ->
+        val primary = if (dark) readable(lerp(seed, Color.White, 0.35f), surface, 4.5f, Color.White) else readable(seed, surface, 3f, Color.Black)
+        val container = if (dark) lerp(seed, Color.Black, 0.5f) else lerp(seed, Color.White, 0.82f)
+        s = s.copy(primary = primary, onPrimary = onColor(primary), primaryContainer = container,
+            onPrimaryContainer = readable(if (dark) lerp(seed, Color.White, 0.8f) else lerp(seed, Color.Black, 0.55f), container, 4.5f, if (dark) Color.White else Color.Black),
+            inversePrimary = if (dark) readable(seed, Light.surface, 3f, Color.Black) else lerp(seed, Color.White, 0.55f), surfaceTint = primary)
+    }
+    brand.secondary?.let { seed ->
+        val secondary = if (dark) readable(lerp(seed, Color.White, 0.35f), surface, 4.5f, Color.White) else readable(seed, surface, 3f, Color.Black)
+        val container = if (dark) lerp(seed, Color.Black, 0.5f) else lerp(seed, Color.White, 0.82f)
+        s = s.copy(secondary = secondary, onSecondary = onColor(secondary), secondaryContainer = container,
+            onSecondaryContainer = readable(if (dark) lerp(seed, Color.White, 0.8f) else lerp(seed, Color.Black, 0.55f), container, 4.5f, if (dark) Color.White else Color.Black))
+    }
+    return s
+}
+
 @Composable
-fun PtTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val colors: ColorScheme = if (dark) Dark else Light
+fun PtTheme(dark: Boolean = isSystemInDarkTheme(), brand: PtBrand? = null, content: @Composable () -> Unit) {
+    val colors: ColorScheme = remember(dark, brand) { (if (dark) Dark else Light).let { base -> brand?.let { base.branded(it, dark) } ?: base } }
     CompositionLocalProvider(LocalPtStatus provides if (dark) DarkStatus else LightStatus) {
         MaterialTheme(colorScheme = colors, typography = PtTypography, shapes = PtShapes, content = content)
     }

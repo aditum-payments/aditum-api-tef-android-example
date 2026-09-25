@@ -500,10 +500,27 @@ fun JsonBlock(json: String, modifier: Modifier = Modifier) {
 
 /** Comprovante na largura do papel (32 colunas), sempre em papel branco. */
 @Composable
-fun ReceiptView(lines: List<String>, modifier: Modifier = Modifier) {
+fun ReceiptView(lines: List<String>, modifier: Modifier = Modifier, logo: Bitmap? = null) {
     Box(modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).background(Color.White).border(1.dp, Color(0xFFE3DFE8), MaterialTheme.shapes.small).horizontalScroll(rememberScrollState()).padding(12.dp)) {
-        Text(lines.joinToString("\n"), style = MonoStyle, color = Color(0xFF222222), softWrap = false)
+        Column {
+            // como sai no papel: centralizado sobre as 32 colunas e em tons de cinza
+            logo?.let { l ->
+                val image = remember(l) { l.asImageBitmap() }
+                androidx.compose.foundation.Image(image, contentDescription = "Logo do estabelecimento", modifier = Modifier.width(receiptWidth(lines)).height(56.dp),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0f) }))
+                Spacer(Modifier.height(8.dp))
+            }
+            Text(lines.joinToString("\n"), style = MonoStyle, color = Color(0xFF222222), softWrap = false)
+        }
     }
+}
+
+/** Largura das 32 colunas do papel na fonte do comprovante, para centralizar o logo sobre elas. */
+@Composable
+private fun receiptWidth(lines: List<String>): Dp {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val px = remember(measurer) { measurer.measure("W".repeat(32), MonoStyle).size.width }
+    return with(androidx.compose.ui.platform.LocalDensity.current) { px.toDp() }
 }
 
 /** QR Code desenhado de verdade (zxing), com margem branca. */

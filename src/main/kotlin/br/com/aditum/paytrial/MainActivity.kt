@@ -15,6 +15,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // a faixa de largura (celular × tablet) é medida aqui e vale para todas as telas
-        setContent { PtTheme { ProvideWidthClass { PayTrialRoot(vm) } } }
+        setContent { PtTheme(brand = vm.brand) { ProvideWidthClass { PayTrialRoot(vm) } } }
     }
 }

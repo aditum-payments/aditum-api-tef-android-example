@@ -89,6 +89,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var terminal by mutableStateOf<TerminalInfo?>(null); private set
     /** Logo do estabelecimento (getMerchantCustomization, 3.0.0); `null` = sem logo ou serviço antigo → logo da Aditum. */
     var merchantLogo by mutableStateOf<android.graphics.Bitmap?>(null); private set
+    /** Cores do estabelecimento aplicadas ao tema; null = as do Pay Trial (serviço 2.x, ou EC sem cores). */
+    var brand by mutableStateOf<br.com.aditum.paytrial.designsystem.PtBrand?>(null); private set
+    /** Logo do comprovante: o do estabelecimento, ou o da Aditum — como a standalone imprime (`printLogo`). */
+    val receiptLogo: android.graphics.Bitmap? get() = merchantLogo ?: defaultLogo
+    private val defaultLogo by lazy { runCatching { android.graphics.BitmapFactory.decodeResource(getApplication<Application>().resources, br.com.aditum.paytrial.R.drawable.aditum_logo) }.getOrNull() }
     /** Status do terminal (getTerminalStatus, 3.0.0): pinpad externo no TefSDK. */
     var terminalStatus by mutableStateOf<TerminalStatus?>(null); private set
     var brands by mutableStateOf<List<CardBrand>>(emptyList()); private set
@@ -196,6 +201,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun loadCustomization() {
         val c = (client.merchantCustomization() as? Res.Ok)?.value
         merchantLogo = c?.logo?.let { runCatching { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
+        val p = br.com.aditum.paytrial.designsystem.PtBrand.parse(c?.primaryColor); val s = br.com.aditum.paytrial.designsystem.PtBrand.parse(c?.secondaryColor)
+        brand = if (p == null && s == null) null else br.com.aditum.paytrial.designsystem.PtBrand(p, s)
     }
     /** Pinpads externos (TefSDK, 3.0.0): null = carregando; vazio = nada na USB nem pareado (ou serviço antigo). */
     var pinpads by mutableStateOf<List<br.com.aditum.data.v2.model.PinpadDevice>?>(null); private set
@@ -342,7 +349,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             var msg = "Comprovante impresso"
             for (lines in listOfNotNull(if (merchantVia) charge.merchantReceipt else null, if (customerVia) charge.cardholderReceipt else null)) {
                 if (lines.isEmpty()) { msg = "A transação não trouxe essa via"; continue }
-                when (val r = client.print(ReceiptPrinter.render(lines))) {
+                when (val r = client.print(ReceiptPrinter.render(lines, receiptLogo))) {
                     is Res.Ok -> if (r.value != br.com.aditum.data.v2.enums.PrintStatus.Ok) { msg = Labels.printStatus(r.value); break }
                     is Res.Fail -> { msg = if ("impressora" in r.message) "Este terminal não tem impressora: envie o comprovante" else r.message; break }
                 }
@@ -366,7 +373,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         busy = "deactivate"
         viewModelScope.launch {
             val r = client.deactivate(); busy = null
-            if (r is Res.Ok && r.value) { merchant = null; terminal = null; brands = emptyList(); recent.clear(); result = null; reset(Screen.Connect); say("Terminal desativado") }
+            if (r is Res.Ok && r.value) { merchant = null; terminal = null; brands = emptyList(); merchantLogo = null; brand = null; recent.clear(); result = null; reset(Screen.Connect); say("Terminal desativado") }
             else say((r as? Res.Fail)?.message ?: "O serviço não desativou o terminal")
         }
     }

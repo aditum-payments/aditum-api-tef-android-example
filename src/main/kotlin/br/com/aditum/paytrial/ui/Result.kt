@@ -140,7 +140,7 @@ fun ReceiptScreen(vm: MainViewModel, c: Charge) {
         else PtButton("Enviar comprovante", { send = true }, Modifier.fillMaxWidth(), icon = PtIcons.Send)
     }) {
         SplitChoice(listOf(Triple(0, "Loja", PtIcons.Store), Triple(1, "Cliente", PtIcons.Person), Triple(2, "Ambas", PtIcons.Receipt)), via, { via = it })
-        if (lines.isEmpty()) EmptyBlock("A transação não trouxe esta via", PtIcons.Receipt) else ReceiptView(lines)
+        if (lines.isEmpty()) EmptyBlock("A transação não trouxe esta via", PtIcons.Receipt) else ReceiptView(lines, logo = vm.receiptLogo)
         if (!vm.hasPrinter) Banner("Terminal sem impressora", Tone.Info, "getDeviceSdk().printerSdk veio nulo: o comprovante sai por e-mail ou SMS.")
         Text("Charge.${if (via == 0) "merchantReceipt" else if (via == 1) "cardholderReceipt" else "merchantReceipt + cardholderReceipt"} → bitmap 384 px → IPrinterSdk.print",
             style = MonoStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
