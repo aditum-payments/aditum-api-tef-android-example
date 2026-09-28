@@ -112,6 +112,12 @@ O que este app faz e que todo integrador precisa fazer (ver `client/AditumClient
    desfazer é `cancel` com o NSU dela; `pendingTransactions` lista o que falta confirmar.
 6. **Abortar:** `abortOperation` interrompe a operação em andamento (o voltar do Android faz isso durante a venda).
 7. **Impressão:** `getDeviceSdk().print(bitmap, callback)` com o comprovante já desenhado (`app/ReceiptPrinter.kt`).
+   Terminal sem impressora (TefSDK, P2 Mini…) devolve `getPrinterSdk()` nulo. **Térmica externa USB** (Mais ›
+   Impressora): o próprio app imprime, sem o serviço, em qualquer impressora USB de classe padrão que fale ESC/POS
+   (Elgin/Bematech i9 testada; Epson, Tanca, Gertec G250…), pela USB host/OTG do aparelho: o mesmo bitmap na largura do
+   papel (80 mm = 576 pontos, 58 mm = 384) vira imagem ESC/POS (`GS v 0`), com corte entre as vias
+   (`app/UsbPrinter.kt`, codificador em `libs/aditum-escpos-<versão>.jar`). A impressora aparece pelo nome que ela
+   informa e o Android pede a permissão de USB uma vez; com o pinpad também na USB, use um hub OTG com fonte.
 8. **Opcionais do 3.0.0** (no fim da interface; serviço 2.x responde `null`): `getMerchantCustomization()` traz o logo
    e as cores do estabelecimento — o Pay Trial aplica as cores ao tema (`designsystem/Theme.kt`, `PtBrand`) e usa o
    logo na tela inicial, no comprovante na tela e no impresso (`app/ReceiptPrinter.kt`); sem logo, usa o da Aditum,
@@ -135,7 +141,7 @@ censura acontece antes de o dado entrar no rastreio, então vale para tela, cons
 Quando o contrato muda no `aditum-tef`, o `.aar` daqui precisa ser gerado de novo:
 
 ```bash
-scripts/sync-example-aar.sh           # gera (catálogo legacy, minSdk 22) e copia para sdk/example/libs
+scripts/sync-example-aar.sh           # gera o .aar (catálogo legacy, minSdk 22) e o jar ESC/POS e copia para sdk/example/libs
 scripts/sync-example-aar.sh --check   # só confere; o build-all.sh --example falha se estiver defasado
 ```
 
