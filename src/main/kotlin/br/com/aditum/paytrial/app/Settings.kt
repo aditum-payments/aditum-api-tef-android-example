@@ -25,7 +25,15 @@ data class PayTrialSettings(
     val previewBeforeSend: Boolean = false,
     /** Comprovantes linha a linha no JSON (já censurados). */
     val receiptsInJson: Boolean = true,
-)
+    /** Onde o comprovante sai: "TERMINAL" (`IPrinterSdk` do terminal) ou "USB" (impressora térmica externa, ESC/POS). */
+    val printerTarget: String = "TERMINAL",
+    /** Impressora USB escolhida (VID:PID, ex.: "20d1:7008" da Elgin i9). */
+    val usbPrinter: String = "",
+    /** Papel da impressora externa: "MM80" (576 pontos) ou "MM58" (384). */
+    val printerPaper: String = "MM80",
+) {
+    val externalPrinter: Boolean get() = printerTarget == "USB" && usbPrinter.isNotBlank()
+}
 
 class SettingsStore(context: Context) {
     private val prefs = context.getSharedPreferences("paytrial", Context.MODE_PRIVATE)
@@ -44,6 +52,9 @@ class SettingsStore(context: Context) {
         integrationMode = prefs.getBoolean("integrationMode", BuildConfig.DEBUG),
         previewBeforeSend = prefs.getBoolean("previewBeforeSend", false),
         receiptsInJson = prefs.getBoolean("receiptsInJson", true),
+        printerTarget = prefs.getString("printerTarget", "TERMINAL") ?: "TERMINAL",
+        usbPrinter = prefs.getString("usbPrinter", "") ?: "",
+        printerPaper = prefs.getString("printerPaper", "MM80") ?: "MM80",
     )
 
     fun update(f: (PayTrialSettings) -> PayTrialSettings) {
@@ -51,6 +62,7 @@ class SettingsStore(context: Context) {
         prefs.edit().putString("activationCode", n.activationCode).putBoolean("integratorScreens", n.integratorScreens)
             .putString("mainMessage", n.mainMessage).putString("processingMessage", n.processingMessage).putString("approvedMessage", n.approvedMessage)
             .putString("declinedMessage", n.declinedMessage).putString("initializationMessage", n.initializationMessage)
-            .putBoolean("integrationMode", n.integrationMode).putBoolean("previewBeforeSend", n.previewBeforeSend).putBoolean("receiptsInJson", n.receiptsInJson).apply()
+            .putBoolean("integrationMode", n.integrationMode).putBoolean("previewBeforeSend", n.previewBeforeSend).putBoolean("receiptsInJson", n.receiptsInJson)
+            .putString("printerTarget", n.printerTarget).putString("usbPrinter", n.usbPrinter).putString("printerPaper", n.printerPaper).apply()
     }
 }

@@ -59,6 +59,7 @@ fun PayTrialRoot(vm: MainViewModel) {
                 is Screen.FreeRequest -> FreeRequestScreen(vm, s.base)
                 Screen.More -> MoreScreen(vm)
                 Screen.Pinpad -> PinpadScreen(vm)
+                Screen.Printer -> PrinterScreen(vm)
                 Screen.Developer -> DeveloperScreen(vm)
                 Screen.Console -> ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
             }

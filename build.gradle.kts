@@ -173,6 +173,8 @@ androidComponents {
 dependencies {
     // o contrato App2App, como um integrador recebe: o .aar da Aditum dentro do app
     implementation(files("libs/AditumSdkIntegration-A2A-3.0.0.aar"))
+    // codificador ESC/POS da impressora externa (`:lib:escpos` do repositório, copiado por scripts/sync-example-aar.sh)
+    implementation(files("libs/aditum-escpos-3.0.0.jar"))
     implementation(libs.kotlin.parcelize.runtime)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

@@ -52,6 +52,7 @@ sealed interface Screen {
     data class FreeRequest(val base: PaymentRequest? = null) : Screen { override val tag = "Requisição livre" }
     data object More : Screen { override val tag = "Mais" }
     data object Pinpad : Screen { override val tag = "Pinpad" }
+    data object Printer : Screen { override val tag = "Impressora" }
     data object Developer : Screen { override val tag = "Desenvolvedor" }
     data object Console : Screen { override val tag = "Console" }
 }
@@ -93,6 +94,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var brand by mutableStateOf<br.com.aditum.paytrial.designsystem.PtBrand?>(null); private set
     /** Logo do comprovante: o do estabelecimento, ou o da Aditum — como a standalone imprime (`printLogo`). */
     val receiptLogo: android.graphics.Bitmap? get() = merchantLogo ?: defaultLogo
+    /** Impressora térmica externa pela USB do aparelho (configuração à parte, em Mais › Impressora). */
+    val usbPrinter = UsbPrinter(app)
+    /** Largura da imagem do comprovante: a impressora externa usa a do papel escolhido; a do terminal, 384 pontos. */
+    private fun paperDots(s: PayTrialSettings) = br.com.aditum.tef.escpos.PaperWidth.entries.firstOrNull { it.name == s.printerPaper }?.dots ?: 576
     private val defaultLogo by lazy { runCatching { android.graphics.BitmapFactory.decodeResource(getApplication<Application>().resources, br.com.aditum.paytrial.R.drawable.aditum_logo) }.getOrNull() }
     /** Status do terminal (getTerminalStatus, 3.0.0): pinpad externo no TefSDK. */
     var terminalStatus by mutableStateOf<TerminalStatus?>(null); private set
@@ -107,7 +112,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Chamada em curso fora de operação (consulta, confirmação, impressão…), para travar botões. */
     var busy by mutableStateOf<String?>(null); private set
     /** Impressora no terminal (`getDeviceSdk().printerSdk != null`); sem ela, comprovante só por envio. */
-    var hasPrinter by mutableStateOf(true); private set
+    /** O terminal tem impressora (`getDeviceSdk().printerSdk`). */
+    var terminalPrinter by mutableStateOf(true); private set
+    /** Há onde imprimir: a impressora do terminal ou a externa USB configurada. */
+    val hasPrinter: Boolean get() = terminalPrinter || settings.state.value.externalPrinter
     /**
      * O serviço tem as telas da Aditum? Falso no build TefSDK e quando o `init` volta com o aviso de que o serviço seguiu
      * com as telas do integrador (Pay Trial sem dispositivo ligado a um TefSDK): aí a opção some e o app fica com as suas.
@@ -155,7 +163,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun applyInit(r: br.com.aditum.data.v2.model.init.InitResponse) {
         terminal = r.terminalInfo; brands = r.availableBrands.orEmpty()
-        loadMerchant(); hasPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending(); loadCustomization(); refreshTerminalStatus()
+        loadMerchant(); terminalPrinter = (client.hasPrinter() as? Res.Ok)?.value ?: true; refreshPending(); loadCustomization(); refreshTerminalStatus()
         // inicializado com aviso (ex.: pediu as telas da Aditum num APK sem elas e o serviço seguiu com as do integrador)
         r.errors?.firstOrNull()?.let { say("Aviso do serviço: " + errorText(it)) }
         if (r.errors.orEmpty().any { it.message == USE_ONLY_SDK_FORCED }) {
@@ -350,6 +358,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun print(charge: Charge, merchantVia: Boolean, customerVia: Boolean) {
         busy = "print"
         viewModelScope.launch {
+            val s = settings.state.value
+            if (s.externalPrinter) {
+                // impressora externa: as mesmas vias do terminal, na largura do papel, como imagem ESC/POS pela USB
+                val vias = listOfNotNull(if (merchantVia) charge.merchantReceipt else null, if (customerVia) charge.cardholderReceipt else null).filter { it.isNotEmpty() }
+                val r = if (vias.isEmpty()) Result.failure(IllegalStateException("A transação não trouxe essa via"))
+                    else usbPrinter.print(s.usbPrinter, vias.map { ReceiptPrinter.render(it, receiptLogo, widthPx = paperDots(s)) })
+                busy = null; say(r.fold({ "Comprovante impresso na impressora USB" }, { it.message ?: "Falha na impressão USB" })); return@launch
+            }
             var msg = "Comprovante impresso"
             for (lines in listOfNotNull(if (merchantVia) charge.merchantReceipt else null, if (customerVia) charge.cardholderReceipt else null)) {
                 if (lines.isEmpty()) { msg = "A transação não trouxe essa via"; continue }
@@ -359,6 +375,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             busy = null; say(msg)
+        }
+    }
+
+    /** Página de teste da impressora externa: identifica a impressora e mede a largura. */
+    fun printUsbTest(s: PayTrialSettings) {
+        busy = "print"
+        viewModelScope.launch {
+            val lines = listOf("   TESTE DE IMPRESSAO", "   Aditum Pay Trial", "", "Impressora USB ${s.usbPrinter}", "Papel: ${s.printerPaper.removePrefix("MM")} mm (${paperDots(s)} pontos)", "",
+                "12345678901234567890123456789012", "Acentos em imagem: ÁÉÍÓÚ ãõ ç", "")
+            val r = usbPrinter.print(s.usbPrinter, listOf(ReceiptPrinter.render(lines, receiptLogo, widthPx = paperDots(s))))
+            busy = null; say(r.fold({ "Teste impresso" }, { it.message ?: "Falha na impressão USB" }))
         }
     }
 
