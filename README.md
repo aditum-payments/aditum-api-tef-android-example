@@ -32,8 +32,8 @@ Requer JDK 17 (o Gradle baixa um se não houver) e o Android SDK (`local.propert
 `build/dist/AditumPayTrial-A2A-<D|P>-<MODELO>-3.0.0+<hash>-<tipo>.apk`.
 
 - `-Ppaytrial.device=<MODELO>` (ou `PAYTRIAL_DEVICE`): o alvo — `GPOS760`, `GPOS720`, `GPOS700X`, `GPOS700MINI`,
-  `GPOS700`, `A910`, `P2`, `DX8000`, `L3`, `L3_2024`, `L400`, `X990`, `X990UX` ou `TEFSDK` — ou um apelido do hardware
-  (`P2MINI`, `A910S`, `EX4000`, `L300`…). Ele escolhe a **chave de assinatura do fabricante** e entra no nome. Sem ele,
+  `GPOS700`, `PAX`, `P2`, `AXIUM`, `L300`, `L3_2024`, `L400`, `X990` ou `TEFSDK` — ou um apelido do hardware
+  (`P2MINI`, `A910S`, `A920`, `EX4000`, `SX7000`, `X990UX`, `L3`…), com os mesmos tokens do app. Ele escolhe a **chave de assinatura do fabricante** e entra no nome. Sem ele,
   o nome sai sem o modelo (`AditumPayTrial-A2A-D-3.0.0+<hash>-debug.apk`) e o release com a chave de debug. Dispositivo desconhecido falha o build com a lista.
 - `-Ppaytrial.environment=development|production` (ou `ENVIRONMENT`): `D` ou `P` no nome. Produção exige o token de
   produção (abaixo); com o de desenvolvimento, o build falha.

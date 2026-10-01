@@ -37,23 +37,22 @@ val deviceKeys = mapOf(
     "GPOS700X" to "gertec-gpos700",
     "GPOS700MINI" to "gertec-gpos700",
     "GPOS700" to "gertec-gpos700",
-    "A910" to "aditum",
+    "PAX" to "aditum",
     "P2" to "aditum",
-    "DX8000" to "aditum",
-    "L3" to "positivo-l3",
+    "AXIUM" to "aditum",
+    "L300" to "positivo-l3",
     "L3_2024" to "positivo-l3-2024",
     "L400" to "positivo-l400",
     "X990" to "aditum",
-    "X990UX" to "aditum",
     "TEFSDK" to "aditum",
 )
 /** Nomes de hardware atendidos por cada alvo (o mesmo APK do fabricante roda neles). */
 val deviceAliases = mapOf(
     "GPOS700A" to "GPOS700",
-    "A910S" to "A910", "A920" to "A910", "A920PRO" to "A910", "A930" to "A910", "A50" to "A910", "A77" to "A910",
+    "A910" to "PAX", "A910S" to "PAX", "A920" to "PAX", "A920PRO" to "PAX",
     "P2LITE" to "P2", "P2LITESE" to "P2", "P2MINI" to "P2", "P2PRO" to "P2", "P2SMARTPAD" to "P2",
-    "DX4000" to "DX8000", "EX4000" to "DX8000", "EX6000" to "DX8000", "SX7000" to "DX8000",
-    "L300" to "L3", "X990PRO" to "X990",
+    "DX8000" to "AXIUM", "DX4000" to "AXIUM", "EX4000" to "AXIUM", "EX6000" to "AXIUM", "SX7000" to "AXIUM",
+    "L3" to "L300", "X990PRO" to "X990", "X990UX" to "X990",
 )
 fun normalize(s: String) = s.trim().uppercase().replace(Regex("[^A-Z0-9]"), "")
 val requestedDevice = (providers.gradleProperty("paytrial.device").orNull ?: System.getenv("PAYTRIAL_DEVICE")).orEmpty().trim()
