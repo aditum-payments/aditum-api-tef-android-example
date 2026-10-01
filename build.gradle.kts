@@ -52,7 +52,7 @@ val deviceAliases = mapOf(
     "GPOS700A" to "GPOS700",
     "A910S" to "A910", "A920" to "A910", "A920PRO" to "A910", "A930" to "A910", "A50" to "A910", "A77" to "A910",
     "P2LITE" to "P2", "P2LITESE" to "P2", "P2MINI" to "P2", "P2PRO" to "P2", "P2SMARTPAD" to "P2",
-    "DX4000" to "DX8000", "EX4000" to "DX8000", "APOSA8" to "DX8000", "DX8000C" to "DX8000",
+    "DX4000" to "DX8000", "EX4000" to "DX8000", "EX6000" to "DX8000", "SX7000" to "DX8000",
     "L300" to "L3", "X990PRO" to "X990",
 )
 fun normalize(s: String) = s.trim().uppercase().replace(Regex("[^A-Z0-9]"), "")
