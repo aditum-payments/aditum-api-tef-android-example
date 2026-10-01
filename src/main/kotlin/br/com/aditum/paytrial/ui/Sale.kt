@@ -1,5 +1,6 @@
 package br.com.aditum.paytrial.ui
 
+import br.com.aditum.paytrial.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -82,7 +83,7 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
     fun send() { if (settings.previewBeforeSend) preview = true else vm.startPay(request()) }
 
     PtScaffold("Pagamento", onBack = { vm.pop() }, wide = true, actions = {
-        IconButton(onClick = { vm.push(Screen.FreeRequest(request())) }) { PtIcon(PtIcons.Edit, "Requisição livre") }
+        if (!BuildConfig.DISTRIBUTION) IconButton(onClick = { vm.push(Screen.FreeRequest(request())) }) { PtIcon(PtIcons.Edit, "Requisição livre") }
         if (settings.integrationMode) IconButton(onClick = { preview = true }) { PtIcon(PtIcons.Json, "Ver a requisição") }
     }, bottomBar = {
         PtButton("Pagar ${Money.brl(amount)}", ::send, Modifier.fillMaxWidth(), icon = PtIcons.Sale, enabled = error == null)

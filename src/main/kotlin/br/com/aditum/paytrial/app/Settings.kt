@@ -19,8 +19,8 @@ data class PayTrialSettings(
     val approvedMessage: String = "",
     val declinedMessage: String = "",
     val initializationMessage: String = "",
-    /** Modo de integração: chip do inspetor, abas cruas e payload dos callbacks. Ligado de fábrica no build debug. */
-    val integrationMode: Boolean = BuildConfig.DEBUG,
+    /** Modo de integração: chip do inspetor, abas cruas e payload dos callbacks. Ligado de fábrica no build debug; nunca na distribuição. */
+    val integrationMode: Boolean = BuildConfig.DEBUG && !BuildConfig.DISTRIBUTION,
     /** Mostra a requisição e pede "Enviar" antes de cada pagamento. */
     val previewBeforeSend: Boolean = false,
     /** Comprovantes linha a linha no JSON (já censurados). */
@@ -49,8 +49,9 @@ class SettingsStore(context: Context) {
         approvedMessage = prefs.getString("approvedMessage", "") ?: "",
         declinedMessage = prefs.getString("declinedMessage", "") ?: "",
         initializationMessage = prefs.getString("initializationMessage", "") ?: "",
-        integrationMode = prefs.getBoolean("integrationMode", BuildConfig.DEBUG),
-        previewBeforeSend = prefs.getBoolean("previewBeforeSend", false),
+        // distribuição (lojista): as ferramentas de integração ficam desligadas por mais que a preferência guardada diga o contrário
+        integrationMode = !BuildConfig.DISTRIBUTION && prefs.getBoolean("integrationMode", BuildConfig.DEBUG),
+        previewBeforeSend = !BuildConfig.DISTRIBUTION && prefs.getBoolean("previewBeforeSend", false),
         receiptsInJson = prefs.getBoolean("receiptsInJson", true),
         printerTarget = prefs.getString("printerTarget", "TERMINAL") ?: "TERMINAL",
         usbPrinter = prefs.getString("usbPrinter", "") ?: "",

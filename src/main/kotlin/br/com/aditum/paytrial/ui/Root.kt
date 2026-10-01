@@ -1,5 +1,6 @@
 package br.com.aditum.paytrial.ui
 
+import br.com.aditum.paytrial.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -56,12 +57,13 @@ fun PayTrialRoot(vm: MainViewModel) {
                 is Screen.Lookup -> LookupScreen(vm, s.nsu)
                 Screen.Confirm -> ConfirmScreen(vm)
                 Screen.Report -> ReportScreen(vm)
-                is Screen.FreeRequest -> FreeRequestScreen(vm, s.base)
+                // distribuição: as telas de desenvolvedor não existem (nenhum atalho leva a elas; isto é só a rede de segurança)
+                is Screen.FreeRequest -> if (BuildConfig.DISTRIBUTION) MoreScreen(vm) else FreeRequestScreen(vm, s.base)
                 Screen.More -> MoreScreen(vm)
                 Screen.Pinpad -> PinpadScreen(vm)
                 Screen.Printer -> PrinterScreen(vm)
-                Screen.Developer -> DeveloperScreen(vm)
-                Screen.Console -> ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
+                Screen.Developer -> if (BuildConfig.DISTRIBUTION) MoreScreen(vm) else DeveloperScreen(vm)
+                Screen.Console -> if (BuildConfig.DISTRIBUTION) MoreScreen(vm) else ConsoleScreen(vm, onOpen = { rawTab = 1; rawId = it })
             }
         }
         // barra de processo: qualquer chamada em curso ganha aviso na hora (depois de 300 ms, para as instantâneas não

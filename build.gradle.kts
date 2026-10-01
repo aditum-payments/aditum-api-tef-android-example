@@ -65,6 +65,10 @@ val device: String? = requestedDevice.ifBlank { null }?.let { r ->
 val deviceToken = when (device) { null -> ""; "TEFSDK" -> "TefSdk"; else -> device }
 val environment = (providers.gradleProperty("paytrial.environment").orNull ?: System.getenv("ENVIRONMENT") ?: "development").trim()
 val envToken = if (environment.equals("production", ignoreCase = true)) "P" else "D"
+// Modo de distribuição: o app vai ao lojista sem as ferramentas de integração (Desenvolvedor, Console, Requisição livre,
+// inspetor, abas cruas). -Ppaytrial.distribution=true|false (ou PAYTRIAL_DISTRIBUTION); sem ele, ligado em produção.
+val distribution = (providers.gradleProperty("paytrial.distribution").orNull ?: System.getenv("PAYTRIAL_DISTRIBUTION"))?.trim()?.equals("true", ignoreCase = true) ?: (envToken == "P")
+logger.lifecycle("paytrial: ambiente $environment · distribuição ${if (distribution) "ligada (sem ferramentas de integração)" else "desligada"}")
 // produção com o token de desenvolvimento não autentica em lugar nenhum: melhor falhar no build que no terminal
 if (envToken == "P" && (partnerToken.isBlank() || partnerToken == "paytrial-dev-token"))
     error("paytrial: build de produção exige o token do integrador de produção (-Ppaytrial.token ou PAYTRIAL_TOKEN)")
@@ -124,6 +128,7 @@ android {
         // TefSDK não tem as telas da Aditum: o build para ele só oferece "Telas do integrador" (useOnlySdk = true)
         buildConfigField("boolean", "ADITUM_SCREENS", (deviceToken != "TefSdk").toString())
         buildConfigField("String", "ENVIRONMENT", "\"$environment\"")
+        buildConfigField("boolean", "DISTRIBUTION", distribution.toString())
         buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         vectorDrawables.useSupportLibrary = true
     }
@@ -160,7 +165,9 @@ kotlin { jvmToolchain(17) }
 if (device == null) logger.lifecycle("paytrial: sem -Ppaytrial.device o APK sai sem dispositivo no nome")
 androidComponents {
     onVariants { v ->
-        val name = "AditumPayTrial-A2A-$envToken-${if (deviceToken.isEmpty()) "" else "$deviceToken-"}$appVersion+$gitHash-${v.buildType}.apk"
+        // fora de produção a distribuição não é o padrão: o APK ganha "-dist" para não se confundir com o de integração
+        val distToken = if (distribution && envToken != "P") "-dist" else ""
+        val name = "AditumPayTrial-A2A-$envToken-${if (deviceToken.isEmpty()) "" else "$deviceToken-"}$appVersion+$gitHash-${v.buildType}$distToken.apk"
         val dist = tasks.register<Copy>("dist${v.name.replaceFirstChar { it.uppercase() }}") {
             from(v.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)) { include("*.apk"); rename { name } }
             into(layout.buildDirectory.dir("dist"))

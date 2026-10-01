@@ -37,6 +37,10 @@ Requer JDK 17 (o Gradle baixa um se não houver) e o Android SDK (`local.propert
   o nome sai sem o modelo (`AditumPayTrial-A2A-D-3.0.0+<hash>-debug.apk`) e o release com a chave de debug. Dispositivo desconhecido falha o build com a lista.
 - `-Ppaytrial.environment=development|production` (ou `ENVIRONMENT`): `D` ou `P` no nome. Produção exige o token de
   produção (abaixo); com o de desenvolvimento, o build falha.
+- `-Ppaytrial.distribution=true|false` (ou `PAYTRIAL_DISTRIBUTION`): **modo de distribuição** — o app para o lojista, sem
+  as ferramentas de integração (seção Desenvolvedor, Console, Requisição livre, inspetor, abas cruas; modo de integração e
+  prévia sempre desligados). Sem o parâmetro, ligado em produção e desligado em desenvolvimento. Fora de produção o APK
+  ganha `-dist` no fim (`…-debug-dist.apk`) para não se confundir com o de integração.
 
 A tabela dispositivo → chave espelha a matriz de modelos do `aditum-tef` (`build-matrix/.../Devices.kt`); o
 `scripts/sync-example-aar.sh --check` acusa quando as duas divergem. De dentro do `aditum-tef`, o mesmo build é
