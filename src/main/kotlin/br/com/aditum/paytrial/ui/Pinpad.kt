@@ -71,7 +71,9 @@ fun PinpadScreen(vm: MainViewModel) {
             when {
                 list == null -> LinearProgressIndicator(Modifier.fillMaxWidth())
                 list.isEmpty() && !vm.scanning -> Text("Nada na USB, nenhum pareado e nada respondeu à busca. Deixe o pinpad pronto para parear e toque em buscar de novo.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                else -> list.sortedWith(compareByDescending<PinpadDevice> { it.selected }.thenByDescending { it.transport != "BLUETOOTH" }.thenByDescending { it.paired }.thenByDescending { it.serialPort }).forEach { d -> PinpadRow(d, onConnect = { if (usb && d.transport == "BLUETOOTH") usbFirst = true else vm.choosePinpad(d) }, onDisconnect = { vm.disconnectPinpad(d) }, onForget = { forget = d }) }
+                // seções, como em todos os serviços (05/10): conectado sempre primeiro, USB, já conectados neste app,
+                // pareados no Android e nunca conectados; ao conectar, o aparelho aparece em "Conectado" com animação
+                else -> PinpadSections(list, onConnect = { d -> if (usb && d.transport == "BLUETOOTH") usbFirst = true else vm.choosePinpad(d) }, onDisconnect = { d -> vm.disconnectPinpad(d) }, onForget = { d -> forget = d })
             }
         })
     }
@@ -81,12 +83,45 @@ fun PinpadScreen(vm: MainViewModel) {
         onConfirm = { forget = null; vm.forgetPinpad(d) }, onDismiss = { forget = null }, destructive = true) }
 }
 
+/** Seções da lista (iguais às do agente desktop e do serviço): a ordem das constantes é a ordem na tela. */
+private enum class PinpadGroup(val title: String) { CONNECTED("Conectado"), USB("USB"), USED("Já conectados neste app"), PAIRED("Pareados no dispositivo"), NEVER("Nunca conectados") }
+
+private fun groupOf(d: PinpadDevice) = when {
+    d.connected -> PinpadGroup.CONNECTED
+    d.transport != "BLUETOOTH" -> PinpadGroup.USB
+    d.usedBefore -> PinpadGroup.USED
+    d.paired -> PinpadGroup.PAIRED
+    else -> PinpadGroup.NEVER
+}
+
+/**
+ * A lista em seções; cada aparelho entra com animação na seção nova quando muda (conectou → sobe para "Conectado").
+ * O serviço já manda na ordem da tela; a busca chega aos poucos, então a tela reagrupa a cada atualização.
+ */
+@Composable
+private fun PinpadSections(list: List<PinpadDevice>, onConnect: (PinpadDevice) -> Unit, onDisconnect: (PinpadDevice) -> Unit, onForget: (PinpadDevice) -> Unit) {
+    val groups = list.distinctBy { (it.address ?: it.id).uppercase() }.groupBy(::groupOf)
+    PinpadGroup.entries.forEach { g ->
+        val items = groups[g].orEmpty()
+        if (items.isEmpty()) return@forEach
+        SectionLabel(g.title)
+        items.forEach { d ->
+            key(g, d.address ?: d.id) {
+                val shown = remember { androidx.compose.animation.core.MutableTransitionState(false) }.apply { targetState = true }
+                androidx.compose.animation.AnimatedVisibility(shown, enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically()) {
+                    PinpadRow(d, onConnect = { onConnect(d) }, onDisconnect = { onDisconnect(d) }, onForget = { onForget(d) })
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PinpadRow(d: PinpadDevice, onConnect: () -> Unit, onDisconnect: () -> Unit, onForget: () -> Unit) {
     val bt = d.transport == "BLUETOOTH"
     Column {
         ListRow(d.name.ifBlank { d.id }, icon = if (bt) PtIcons.Bluetooth else PtIcons.Usb,
-            details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "último usado" else null,
+            details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
                 if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && d.serialPort) "porta serial" else null).joinToString(" · ")),
             trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onConnect)
         // conectar é tocar na linha; desconectar vale para o escolhido/conectado; esquecer, para Bluetooth pareado
