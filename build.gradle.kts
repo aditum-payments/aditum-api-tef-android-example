@@ -63,11 +63,20 @@ val device: String? = requestedDevice.ifBlank { null }?.let { r ->
 }
 /** Token do dispositivo no nome do APK: o modelo em maiúsculas (TefSdk como no serviço); sem dispositivo, nenhum. */
 val deviceToken = when (device) { null -> ""; "TEFSDK" -> "TefSdk"; else -> device }
-val environment = (providers.gradleProperty("paytrial.environment").orNull ?: System.getenv("ENVIRONMENT") ?: "development").trim()
-val envToken = if (environment.equals("production", ignoreCase = true)) "P" else "D"
+// Parâmetros de escolha e liga/desliga em qualquer caixa (Kelvin, 08/10; mesmo critério do BuildParams do aditum-tef):
+// valor desconhecido é erro, nada cai calado no padrão
+fun flagOf(name: String, raw: String?, default: Boolean): Boolean = when (raw?.trim()?.lowercase().orEmpty()) {
+    "" -> default; "true", "on", "yes", "y", "sim", "s", "1" -> true; "false", "off", "no", "n", "nao", "não", "0" -> false
+    else -> error("paytrial: -P$name aceita true/false (ou on/off, yes/no, sim/não, 1/0), sem diferença de maiúsculas; recebido '${raw?.trim()}'")
+}
+val environment = (providers.gradleProperty("paytrial.environment").orNull ?: System.getenv("ENVIRONMENT")).orEmpty().trim().lowercase().let {
+    when (it) { "", "development", "dev", "desenvolvimento" -> "development"; "production", "prod", "producao", "produção" -> "production"; "ssf" -> "ssf"
+        else -> error("paytrial: -Ppaytrial.environment aceita development, production ou ssf, sem diferença de maiúsculas; recebido '$it'") }
+}
+val envToken = if (environment == "production") "P" else "D"
 // Modo de distribuição: o app vai ao lojista sem as ferramentas de integração (Desenvolvedor, Console, Requisição livre,
 // inspetor, abas cruas). -Ppaytrial.distribution=true|false (ou PAYTRIAL_DISTRIBUTION); sem ele, ligado em produção.
-val distribution = (providers.gradleProperty("paytrial.distribution").orNull ?: System.getenv("PAYTRIAL_DISTRIBUTION"))?.trim()?.equals("true", ignoreCase = true) ?: (envToken == "P")
+val distribution = flagOf("paytrial.distribution", providers.gradleProperty("paytrial.distribution").orNull ?: System.getenv("PAYTRIAL_DISTRIBUTION"), envToken == "P")
 logger.lifecycle("paytrial: ambiente $environment · distribuição ${if (distribution) "ligada (sem ferramentas de integração)" else "desligada"}")
 // produção com o token de desenvolvimento não autentica em lugar nenhum: melhor falhar no build que no terminal
 if (envToken == "P" && (partnerToken.isBlank() || partnerToken == "paytrial-dev-token"))
@@ -82,7 +91,7 @@ if (envToken == "P" && (partnerToken.isBlank() || partnerToken == "paytrial-dev-
 // (CI/TF_BUILD) o release falha sem a chave do dispositivo. -Ppaytrial.keystore=<arquivo> + PAYTRIAL_STORE_PASSWORD /
 // _KEY_ALIAS / _KEY_PASSWORD (um .jks só, o jeito antigo) vence a tabela.
 val signingDir = file(providers.gradleProperty("paytrial.signing.dir").orNull ?: "../../certs")
-val signingStrict = (providers.gradleProperty("paytrial.signing.strict").orNull?.toBoolean()) ?: (System.getenv("CI") != null || System.getenv("TF_BUILD") != null)
+val signingStrict = flagOf("paytrial.signing.strict", providers.gradleProperty("paytrial.signing.strict").orNull, System.getenv("CI") != null || System.getenv("TF_BUILD") != null)
 val explicitKeystore = providers.gradleProperty("paytrial.keystore").orNull
 val signingFile = Properties().apply {
     file(providers.gradleProperty("paytrial.signing.properties").orNull ?: "../../signing.properties").takeIf { it.isFile }
