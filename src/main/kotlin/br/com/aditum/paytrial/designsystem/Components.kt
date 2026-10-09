@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -229,12 +230,31 @@ fun PtTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
-/** Contador com − e + (parcelas, partes). */
+/**
+ * Contador com − e + (parcelas, partes); o número também se digita — clicar nele abre a edição, e o valor só vale
+ * dentro de [min]..[max] (fora disso, ao sair do campo, volta ao último válido).
+ */
 @Composable
 fun StepperRow(value: Int, min: Int, max: Int, onChange: (Int) -> Unit, caption: String? = null) {
+    var text by remember(value) { mutableStateOf(value.toString()) }
+    val color = MaterialTheme.colorScheme.onSurface
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         FilledTonalIconButton(onClick = { onChange(value - 1) }, enabled = value > min, shape = MaterialTheme.shapes.medium) { PtIcon(PtIcons.Minus, "Menos") }
-        Text("$value", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.widthIn(min = 56.dp), textAlign = TextAlign.Center)
+        androidx.compose.foundation.text.BasicTextField(text, { t ->
+                val d = t.filter(Char::isDigit).take(max.toString().length); text = d
+                d.toIntOrNull()?.takeIf { it in min..max }?.let(onChange)
+            },
+            Modifier.width(72.dp).padding(horizontal = 4.dp).onFocusChanged { if (!it.isFocused) text = value.toString() },
+            textStyle = MaterialTheme.typography.headlineSmall.copy(color = color, textAlign = TextAlign.Center), singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+            decorationBox = { inner ->
+                // traço sob o número: diz que ele se edita, sem a caixa de um campo de formulário
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    inner()
+                    Box(Modifier.padding(top = 2.dp).width(40.dp).height(2.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                }
+            })
         FilledTonalIconButton(onClick = { onChange(value + 1) }, enabled = value < max, shape = MaterialTheme.shapes.medium) { PtIcon(PtIcons.Plus, "Mais") }
     }
     if (caption != null) Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)

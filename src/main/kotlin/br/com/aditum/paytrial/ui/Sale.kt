@@ -61,8 +61,12 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
     val options = remember(m) { PaymentRules.options(m) }
     val operations = remember(m) { PaymentRules.operations(m) }
     var op by remember { mutableStateOf(if (initialOp in operations) initialOp else PayOperationType.Authorization) }
+    // formas da operação: pré-autorização e afins só no crédito (o serviço recusa o resto)
+    val shown = remember(options, op) { PaymentRules.optionsFor(options, op) }
     var option by remember { mutableStateOf(options.firstOrNull()) }
-    var instType by remember(option) { mutableStateOf(option?.installmentTypes?.first() ?: InstallmentType.None) }
+    LaunchedEffect(shown) { if (option !in shown) option = shown.firstOrNull() }
+    val types = remember(option, op, m) { option?.let { PaymentRules.installmentTypesFor(it, op, m) } ?: listOf(InstallmentType.None) }
+    var instType by remember(option, op) { mutableStateOf(types.first()) }
     val range = option?.let { PaymentRules.installmentRange(it, instType) } ?: 1..1
     var installments by remember(option, instType) { mutableIntStateOf(range.first) }
     var contactless by remember { mutableStateOf(m?.contaclessEnabled != false) }
@@ -76,7 +80,9 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
     val error = PaymentRules.validate(amount, option, instType, installments, op, originalNsu)
     fun request() = PaymentRequest(
         amount = amount, isQrCode = option?.isQr == true, operationType = op, paymentType = option?.paymentType ?: br.com.aditum.data.v2.enums.PaymentType.Undefined,
-        installmentType = if (option?.isQr == true) InstallmentType.None else instType, installmentNumber = if (instType == InstallmentType.None) 1 else installments,
+        // "Escolher no TEF": sem forma e sem parcelamento — o cartão decide e o serviço pergunta o parcelamento depois
+        installmentType = when { option?.isAsk == true -> InstallmentType.Undefined; option?.isQr == true -> InstallmentType.None; else -> instType },
+        installmentNumber = if (option?.isAsk == true) 0 else PaymentRules.installmentNumber(instType, installments),
         merchantChargeId = chargeId.trim(), origin = origin.trim(), originalNsu = if (PaymentRules.needsOriginalNsu(op)) originalNsu.trim() else "",
         acquirer = option?.acquirer ?: br.com.aditum.data.v2.enums.Acquirer.Undefined, scheme = option?.scheme.orEmpty(), manualEntry = typed, allowContactless = contactless,
     )
@@ -93,13 +99,21 @@ fun CheckoutScreen(vm: MainViewModel, amount: Long, initialOp: PayOperationType)
         if (operations.size > 1) Segmented(operations.map { it to Labels.operation(it) }, op, { op = it })
         if (PaymentRules.needsOriginalNsu(op)) PtField(originalNsu, { originalNsu = it.filter(Char::isDigit) }, "NSU da pré-autorização", keyboard = KeyboardType.Number)
         SectionLabel("Forma de pagamento")
-        OptionTiles(options, option) { option = it }
+        OptionTiles(shown, option) { option = it }
         }, second = {
         val o = option
-        if (o != null && !o.isQr && o.installmentTypes.size > 1) {
+        if (o != null && !o.isQr && !o.isAsk && types.size > 1) {
             SectionLabel("Parcelamento")
-            Segmented(o.installmentTypes.map { it to Labels.installmentType(it) }, instType, { instType = it })
+            Segmented(types.map { it to Labels.installmentType(it) }, instType, { instType = it })
         }
+        // o que o serviço ainda pergunta, para o operador não estranhar
+        val after = when {
+            o?.isAsk == true -> "O cartão decide a forma; se for crédito, o parcelamento é perguntado depois do cartão."
+            instType == InstallmentType.Client -> "Bandeira, parcelas e total com o juros do cliente são escolhidos antes do cartão."
+            instType == InstallmentType.DueDate -> "A data da cobrança é pedida antes do cartão."
+            else -> null
+        }
+        after?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (o != null && (instType == InstallmentType.Merchant || instType == InstallmentType.Issuer)) {
             StepperRow(installments, range.first, range.last, { installments = it }, "${range.first} a ${range.last} parcelas · ${installments} × ${Money.brl(amount / installments.coerceAtLeast(1))}")
         }
@@ -166,7 +180,8 @@ fun OperationScreen(vm: MainViewModel) {
     val last = op.steps.lastOrNull()
     PtScaffold(op.title, bottomBar = { PtButton("Cancelar operação", { vm.abort() }, Modifier.fillMaxWidth(), PtButtonKind.Outlined, PtIcons.Close) }) {
         if (!settings.integratorScreens) Banner("Operação na tela da Aditum", Tone.Info, "O app da Aditum está por cima; ao terminar, volta para cá com o resultado.")
-        AmountDisplay(op.amount)
+        AmountDisplay(op.amount, if (op.typedAmount != null) "Valor com juros" else "Valor")
+        op.typedAmount?.let { Text("Parcelado Cliente · valor digitado ${Money.brl(it)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         Banner(last?.title ?: "Iniciando", Tone.Neutral, last?.message?.ifBlank { null } ?: "Aguardando o serviço", if (op.kind.name == "PAY") PtIcons.Contactless else PtIcons.Cancel)
         if (op.steps.size > 1 || settings.integrationMode) {
             SectionLabel("Linha do tempo")

@@ -96,6 +96,20 @@ private fun PromptSheet(p: Prompt, onAbortOperation: () -> Unit) {
     when (p) {
         is Prompt.ClearData -> {
             val r = p.request
+            // número de parcelas: o mesmo seletor −/+ (digitável) da tela de pagamento, não um campo de texto
+            val range = br.com.aditum.paytrial.app.PaymentRules.installmentsRange(r.title, r.description)
+            if (range != null) {
+                var n by remember { mutableStateOf(range.first) }
+                val left = rememberCountdown(r.timeout ?: 0) { p.abort() }
+                PtSheet("Número de parcelas", onDismiss = {}, dismissible = false, actions = {
+                    PtButton("Cancelar", { p.abort(); onAbortOperation() }, Modifier.weight(1f), PtButtonKind.Outlined)
+                    PtButton("Confirmar", { p.answer(n.toString()) }, Modifier.weight(1f))
+                }) {
+                    StepperRow(n, range.first, range.last, { n = it.coerceIn(range.first, range.last) },
+                        caption = listOfNotNull("de ${range.first} a ${range.last} parcelas", left?.let { "expira em ${it}s" }).joinToString(" · "))
+                }
+                return
+            }
             var value by remember { mutableStateOf("") }
             val min = r.minSize ?: 1; val max = (r.maxSize ?: 32).coerceAtLeast(min)
             val left = rememberCountdown(r.timeout ?: 0) { p.abort() }

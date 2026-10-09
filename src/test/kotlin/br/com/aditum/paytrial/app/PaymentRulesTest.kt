@@ -36,5 +36,32 @@ class PaymentRulesTest {
     @Test fun `captura exige o NSU da pre-autorizacao`() =
         assertEquals("Informe o NSU da pré-autorização", PaymentRules.validate(1000, credit, InstallmentType.None, 1, PayOperationType.PreAuthorizationCapture, ""))
 
-    @Test fun `sem esquemas na carga, as formas basicas`() = assertEquals(listOf(PaymentType.Credit, PaymentType.Debit, PaymentType.Voucher, PaymentType.Pix), PaymentRules.options(null).map { it.paymentType })
+    @Test fun `sem esquemas na carga, as formas basicas e Escolher no TEF`() = assertEquals(listOf(PaymentType.Credit, PaymentType.Debit, PaymentType.Voucher, PaymentType.Pix, PaymentType.Undefined), PaymentRules.options(null).map { it.paymentType })
+
+    @Test fun `total do parcelado cliente sai da opcao escolhida so no menu PARCELADO CLIENTE`() {
+        assertEquals(26_000L, PaymentRules.clientInstallmentTotal("Parcelado Cliente - Visa", "5x de R$ 52,00 (total R$ 260,00)"))
+        assertEquals(123_456L, PaymentRules.clientInstallmentTotal("Parcelado Cliente", "12x de R$ 102,88 (total R$ 1.234,56)"))
+        assertNull(PaymentRules.clientInstallmentTotal("PARCELAMENTO", "Parcelado Cliente"))
+        assertNull(PaymentRules.clientInstallmentTotal("SELECIONE:", "Credito Nubank"))
+    }
+
+    @Test fun `pedido de parcelas vira faixa para o seletor`() {
+        assertEquals(2..6, PaymentRules.installmentsRange("PARCELAS", "Número de parcelas (2 a 6)"))
+        assertNull(PaymentRules.installmentsRange("Data da cobrança(DDMM)", "Data da cobrança(DDMM)"))
+    }
+
+    @Test fun `pre-autorizacao so oferece credito, sem emissor, e a venda tem Escolher no TEF`() {
+        val debit = PaymentOption("d", "Débito", PaymentType.Debit, Acquirer.Simulator, "", emptyList())
+        val all = listOf(credit, debit, PaymentRules.ASK)
+        assertEquals(listOf(credit), PaymentRules.optionsFor(all, PayOperationType.PreAuthorization))
+        assertEquals(all, PaymentRules.optionsFor(all, PayOperationType.Authorization))
+        val withIssuer = credit.copy(rules = credit.rules + InstallmentRule(InstallmentType.Issuer, 1000, 1_000_000, 2, 12, 500, 0))
+        assertEquals(listOf(InstallmentType.None), PaymentRules.installmentTypesFor(withIssuer, PayOperationType.PreAuthorization, null))
+    }
+
+    @Test fun `parcelado cliente vai sem parcelas e pre-datado com uma`() {
+        assertEquals(0, PaymentRules.installmentNumber(InstallmentType.Client, 5)); assertEquals(1, PaymentRules.installmentNumber(InstallmentType.DueDate, 5)); assertEquals(5, PaymentRules.installmentNumber(InstallmentType.Merchant, 5))
+        val c = credit.copy(rules = credit.rules + InstallmentRule(InstallmentType.Client, 100, 1_000_000, 2, 12, 0, 0))
+        assertEquals(listOf(InstallmentType.None, InstallmentType.Merchant, InstallmentType.Client), c.installmentTypes)
+    }
 }

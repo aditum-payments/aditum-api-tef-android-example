@@ -63,7 +63,7 @@ data class Step(val title: String, val message: String, val detail: String?)
 data class QrState(val code: String, val totalSeconds: Int, val receivedAt: Long)
 
 /** Operação em curso (venda ou cancelamento): passos das notificações, PIN e QR. */
-data class OpState(val kind: OpKind, val amount: Long, val title: String, val steps: List<Step> = emptyList(), val pinLength: Int? = null, val qr: QrState? = null)
+data class OpState(val kind: OpKind, val amount: Long, val title: String, val steps: List<Step> = emptyList(), val pinLength: Int? = null, val qr: QrState? = null, val typedAmount: Long? = null)
 
 /** Resultado da última operação. [traceId] aponta a chamada no rastreio (abas Requisição/Resposta). */
 data class ResultState(
@@ -305,8 +305,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun onEvent(e: PaymentEvent) {
         val o = op ?: return
         op = when (e) {
-            is PaymentEvent.Notification -> o.copy(steps = o.steps + Step(Labels.step(e.status), e.message, "notification · ${e.status?.name} · ${e.command?.name}"), pinLength = if (e.status == br.com.aditum.data.v2.enums.TransactionStatus.GettingPin) o.pinLength else null)
+            is PaymentEvent.Notification -> o.copy(steps = o.steps + Step(Labels.step(e.status), e.message, "notification · ${e.status?.name} · ${e.command?.name}"), pinLength = if (e.status == br.com.aditum.data.v2.enums.TransactionStatus.GettingPin || e.command == br.com.aditum.data.v2.enums.AbecsCommands.Display) o.pinLength else null)   // o texto do pinpad ("VALOR … SENHA:") vem a cada dígito: fechar aqui fazia a folha de PIN descer e subir
             is PaymentEvent.Pin -> o.copy(pinLength = e.length)
+            is PaymentEvent.MenuChosen -> PaymentRules.clientInstallmentTotal(e.title, e.option)?.let { total ->
+                o.copy(amount = total, typedAmount = o.typedAmount ?: o.amount, steps = o.steps + Step("Parcelado Cliente", e.option, "getMenuSelectionFinished · ${e.option}"))
+            } ?: o
             is PaymentEvent.Qr -> o.copy(qr = QrState(e.code, e.expirationSeconds, e.at), steps = o.steps + Step("QR Code gerado", "Aguardando leitura", "qrCodeGenerated · ${e.expirationSeconds} s"))
         }
     }

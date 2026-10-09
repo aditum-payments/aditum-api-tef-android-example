@@ -74,6 +74,8 @@ sealed interface PaymentEvent {
     data class Notification(val message: String, val status: TransactionStatus?, val command: AbecsCommands?, override val at: Long = System.currentTimeMillis()) : PaymentEvent
     data class Pin(val message: String, val length: Int, override val at: Long = System.currentTimeMillis()) : PaymentEvent
     data class Qr(val code: String, val expirationSeconds: Int, override val at: Long = System.currentTimeMillis()) : PaymentEvent
+    /** Opção que o integrador escolheu num `startGetMenuSelection` (o serviço só manda o título e os textos). */
+    data class MenuChosen(val title: String, val option: String, override val at: Long = System.currentTimeMillis()) : PaymentEvent
 }
 
 /** Pedidos do serviço que o integrador responde (só chegam com "Telas do integrador", `useOnlySdk = true`). */
@@ -220,7 +222,7 @@ class AditumClient(context: Context, val trace: TraceLog) {
             trace.callback("startGetMenuSelection", screen, ContractJson.redacted(request))
             val req = request ?: GetMenuSelectionRequest()
             _prompt.value = Prompt.Menu(req,
-                choose = { i -> _prompt.value = null; trace.callback("getMenuSelectionFinished", screen, "{\"index\": $i}"); scope.launch(Dispatchers.IO) { runCatching { callback?.getMenuSelectionFinished(i) } } },
+                choose = { i -> _prompt.value = null; trace.callback("getMenuSelectionFinished", screen, "{\"index\": $i}"); req.optionList?.getOrNull(i)?.let { _events.tryEmit(PaymentEvent.MenuChosen(req.title.orEmpty(), it)) }; scope.launch(Dispatchers.IO) { runCatching { callback?.getMenuSelectionFinished(i) } } },
                 abort = { _prompt.value = null; trace.callback("getMenuSelectionAborted", screen, null); scope.launch(Dispatchers.IO) { runCatching { callback?.getMenuSelectionAborted() } } })
         }
         override fun qrCodeGenerated(qrCode: String?, expirationTime: Int) {
