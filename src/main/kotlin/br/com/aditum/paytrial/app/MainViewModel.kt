@@ -88,17 +88,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     var merchant by mutableStateOf<MerchantData?>(null); private set
     var terminal by mutableStateOf<TerminalInfo?>(null); private set
-    /** Logo do estabelecimento (getMerchantCustomization, 3.0.0); `null` = sem logo ou serviço antigo → logo da Aditum. */
+    /** Logo do estabelecimento (getMerchantCustomization, 3.0.0); `null` = sem logo ou serviço antigo → sem logo nenhum. */
     var merchantLogo by mutableStateOf<android.graphics.Bitmap?>(null); private set
     /** Cores do estabelecimento aplicadas ao tema; null = as do Pay Trial (serviço 2.x, ou EC sem cores). */
     var brand by mutableStateOf<br.com.aditum.paytrial.designsystem.PtBrand?>(null); private set
-    /** Logo do comprovante: o do estabelecimento, ou o da Aditum — como a standalone imprime (`printLogo`). */
-    val receiptLogo: android.graphics.Bitmap? get() = merchantLogo ?: defaultLogo
+    /** Logo do comprovante: só o do estabelecimento; sem ele, o papel sai sem logo (Kelvin, 09/10: nada de marca padrão). */
+    val receiptLogo: android.graphics.Bitmap? get() = merchantLogo
     /** Impressora térmica externa pela USB do aparelho (configuração à parte, em Mais › Impressora). */
     val usbPrinter = UsbPrinter(app)
     /** Largura da imagem do comprovante: a impressora externa usa a do papel escolhido; a do terminal, 384 pontos. */
     private fun paperDots(s: PayTrialSettings) = br.com.aditum.tef.escpos.PaperWidth.entries.firstOrNull { it.name == s.printerPaper }?.dots ?: 576
-    private val defaultLogo by lazy { runCatching { android.graphics.BitmapFactory.decodeResource(getApplication<Application>().resources, br.com.aditum.paytrial.R.drawable.aditum_logo) }.getOrNull() }
     /** Status do terminal (getTerminalStatus, 3.0.0): pinpad externo no TefSDK. */
     var terminalStatus by mutableStateOf<TerminalStatus?>(null); private set
     var brands by mutableStateOf<List<CardBrand>>(emptyList()); private set

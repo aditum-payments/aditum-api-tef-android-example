@@ -131,9 +131,11 @@ fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<Str
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     val content: @Composable () -> Unit = {
         androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            val painter = if (logo != null) androidx.compose.ui.graphics.painter.BitmapPainter(logo.asImageBitmap()) else androidx.compose.ui.res.painterResource(br.com.aditum.paytrial.R.drawable.aditum_logo)
-            androidx.compose.foundation.Image(painter, "Logo do estabelecimento", Modifier.height(height).widthIn(max = maxWidth), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
-            Spacer(Modifier.width(16.dp))
+            // só o logo que o serviço salvou; sem ele, nada (Kelvin, 09/10: app white label, nada de marca padrão)
+            if (logo != null) {
+                androidx.compose.foundation.Image(androidx.compose.ui.graphics.painter.BitmapPainter(logo.asImageBitmap()), "Logo do estabelecimento", Modifier.height(height).widthIn(max = maxWidth), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+                Spacer(Modifier.width(16.dp))
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 if (pinpad != null) {
