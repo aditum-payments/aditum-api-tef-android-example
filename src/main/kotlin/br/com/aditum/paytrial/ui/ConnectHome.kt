@@ -82,7 +82,7 @@ fun HomeScreen(vm: MainViewModel) {
         LaunchedEffect(Unit) { vm.refreshTerminalStatus(traced = false) }
         val status = vm.terminalStatus
         val external = status?.externalPinpad == true
-        MerchantCard(listOfNotNull(m?.document?.let { "CNPJ ${cnpj(it)}" }, vm.terminal?.model?.ifBlank { null }).joinToString(" · ").ifBlank { "Terminal ativado" },
+        MerchantCard(listOfNotNull(m?.document?.takeIf { it.isNotBlank() }?.let { "${Labels.documentKind(it)} ${Labels.document(it)}" }, vm.terminal?.model?.ifBlank { null }).joinToString(" · ").ifBlank { "Terminal ativado" },
             vm.merchantLogo,
             pinpad = status?.takeIf { it.externalPinpad }?.let { st -> st.pinpadTransport to listOfNotNull(st.pinpadModel?.ifBlank { null }, st.pinpadSerialNumber?.ifBlank { null }?.let { "série $it" }).joinToString(" · ").ifBlank { "nenhum pinpad usado ainda" } },
             screens = if (settings.integratorScreens) "Telas do integrador" else "Telas da Aditum",
@@ -154,5 +154,3 @@ fun MerchantCard(title: String, logo: android.graphics.Bitmap?, pinpad: Pair<Str
     else androidx.compose.material3.Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = colors) { content() }
 }
 
-/** CNPJ com máscara (00.000.000/0000-00); outro formato volta como veio. */
-private fun cnpj(d: String): String = d.filter(Char::isDigit).let { if (it.length == 14) "${it.take(2)}.${it.substring(2, 5)}.${it.substring(5, 8)}/${it.substring(8, 12)}-${it.takeLast(2)}" else d }

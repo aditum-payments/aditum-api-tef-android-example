@@ -64,4 +64,12 @@ class PaymentRulesTest {
         val c = credit.copy(rules = credit.rules + InstallmentRule(InstallmentType.Client, 100, 1_000_000, 2, 12, 0, 0))
         assertEquals(listOf(InstallmentType.None, InstallmentType.Merchant, InstallmentType.Client), c.installmentTypes)
     }
+
+    @Test fun `documento do estabelecimento formatado, CNPJ alfanumerico inclusive`() {
+        assertEquals("12.ABC.345/01DE-35", Labels.document("12abc34501de35"))
+        assertEquals("12.ABC.345/01DE-35", Labels.document("12.ABC.345/01DE-35"))
+        assertEquals("42.932.470/8410-00", Labels.document("42932470841000"))
+        assertEquals("123.456.789-09", Labels.document("12345678909")); assertEquals("CPF", Labels.documentKind("12345678909"))
+        assertEquals("CNPJ", Labels.documentKind("12ABC34501DE35"))
+    }
 }

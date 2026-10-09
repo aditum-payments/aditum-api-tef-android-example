@@ -45,4 +45,21 @@ object Labels {
     fun dateTime(iso: String?): String = iso?.let { s -> Regex("(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})").find(s)?.destructured?.let { (_, mo, d, h, mi) -> "$d/$mo $h:$mi" } ?: s } ?: ""
     fun time(iso: String?): String = iso?.let { s -> Regex("[T ](\\d{2}:\\d{2})").find(s)?.groupValues?.get(1) ?: "" } ?: ""
     fun dateTime(d: Date?): String = d?.let { SimpleDateFormat("dd/MM HH:mm", Locale("pt", "BR")).format(it) } ?: ""
+
+    /**
+     * CPF ou CNPJ para exibir, como o `Masks.document` do app: o CNPJ alfanumérico (12 primeiras posições com letras,
+     * Receita 2026) sai `12.ABC.345/01DE-35`; o numérico `12.345.678/0001-95`; o CPF `123.456.789-09`. Vem cru ou já
+     * pontuado; outro tamanho volta como veio.
+     */
+    fun document(value: String): String {
+        val c = value.filter(Char::isLetterOrDigit).uppercase()
+        return when {
+            c.length == 14 && c.takeLast(2).all(Char::isDigit) -> "${c.take(2)}.${c.substring(2, 5)}.${c.substring(5, 8)}/${c.substring(8, 12)}-${c.takeLast(2)}"
+            c.length == 11 && c.all(Char::isDigit) -> "${c.take(3)}.${c.substring(3, 6)}.${c.substring(6, 9)}-${c.takeLast(2)}"
+            else -> value
+        }
+    }
+
+    /** "CNPJ" ou "CPF", pelo tamanho do documento (o MerchantData traz o do estabelecimento). */
+    fun documentKind(value: String): String = if (value.count(Char::isLetterOrDigit) == 11) "CPF" else "CNPJ"
 }
