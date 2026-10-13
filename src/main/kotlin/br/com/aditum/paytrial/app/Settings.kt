@@ -8,6 +8,12 @@ import kotlinx.coroutines.flow.StateFlow
 /** Preferências do Aditum Pay Trial, guardadas no aparelho. */
 data class PayTrialSettings(
     val activationCode: String = "",
+    /**
+     * O último init deu certo e o terminal não foi desativado depois: ao abrir, o app inicializa sozinho e vai direto
+     * para a tela inicial, como o aditum-client (Kelvin, 13/10). A tela de ativação fica para a primeira vez e para
+     * depois de desativar.
+     */
+    val initialized: Boolean = false,
     /** true = "Telas do integrador" (`useOnlySdk`): o app desenha PIN, QR, dado digitado e menu. Sempre true no build TefSDK. */
     val integratorScreens: Boolean = !BuildConfig.ADITUM_SCREENS,
     /**
@@ -42,6 +48,7 @@ class SettingsStore(context: Context) {
 
     private fun load() = PayTrialSettings(
         activationCode = prefs.getString("activationCode", "") ?: "",
+        initialized = prefs.getBoolean("initialized", false),
         integratorScreens = !BuildConfig.ADITUM_SCREENS || prefs.getBoolean("integratorScreens", false),
         // "ADITUM PAY TRIAL" era o padrão antigo: quem nunca mudou passa a ver o estabelecimento no pinpad
         mainMessage = (prefs.getString("mainMessage", "") ?: "").takeUnless { it == "ADITUM PAY TRIAL" }.orEmpty(),
@@ -60,7 +67,7 @@ class SettingsStore(context: Context) {
 
     fun update(f: (PayTrialSettings) -> PayTrialSettings) {
         val n = f(_state.value); _state.value = n
-        prefs.edit().putString("activationCode", n.activationCode).putBoolean("integratorScreens", n.integratorScreens)
+        prefs.edit().putString("activationCode", n.activationCode).putBoolean("initialized", n.initialized).putBoolean("integratorScreens", n.integratorScreens)
             .putString("mainMessage", n.mainMessage).putString("processingMessage", n.processingMessage).putString("approvedMessage", n.approvedMessage)
             .putString("declinedMessage", n.declinedMessage).putString("initializationMessage", n.initializationMessage)
             .putBoolean("integrationMode", n.integrationMode).putBoolean("previewBeforeSend", n.previewBeforeSend).putBoolean("receiptsInJson", n.receiptsInJson)

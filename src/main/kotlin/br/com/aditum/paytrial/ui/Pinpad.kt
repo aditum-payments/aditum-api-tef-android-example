@@ -41,9 +41,11 @@ fun PinpadScreen(vm: MainViewModel) {
     val list = vm.pinpads
     val status = vm.terminalStatus
     var forget by remember { mutableStateOf<PinpadDevice?>(null) }
-    fun searchBluetooth() { when { usb -> usbFirst = true; !bluetoothOn -> openBluetoothSettings(context); else -> vm.scanPinpads() } }
+    // com pinpad na USB o botão relê a lista (o serviço testa de novo um pinpad que ainda ligava quando foi plugado); a busca
+    // Bluetooth, bloqueada com a USB plugada, fica na linha "Bluetooth" (13/10: o botão só mostrava "remova da USB")
+    fun refreshOrSearch() { when { usb -> vm.loadPinpads(); !bluetoothOn -> openBluetoothSettings(context); else -> vm.scanPinpads() } }
     PtScaffold("Pinpad", onBack = { vm.pop() }, wide = true, actions = {
-        IconButton(onClick = { searchBluetooth() }, enabled = !vm.scanning) { PtIcon(PtIcons.Refresh, "Buscar de novo") }
+        IconButton(onClick = { refreshOrSearch() }, enabled = !vm.scanning) { PtIcon(PtIcons.Refresh, if (usb) "Atualizar" else "Buscar de novo") }
     }) {
         TwoPane(first = {
             SectionLabel("Último pinpad usado")
@@ -124,8 +126,9 @@ private fun PinpadRow(d: PinpadDevice, onConnect: () -> Unit, onDisconnect: () -
             details = listOf(listOfNotNull(if (bt) "Bluetooth" else "USB", d.address, if (d.connected) "conectado" else null,
                 if (bt) (if (d.paired) "pareado" else "não pareado") else null, if (bt && d.nearby) "por perto" else null, if (bt && d.serialPort) "porta serial" else null).joinToString(" · ")),
             trailing = { if (d.selected) PtIcon(PtIcons.Confirm, "escolhido") }, onClick = onConnect)
-        // conectar é tocar na linha; desconectar vale para o escolhido/conectado; esquecer, para Bluetooth pareado
-        if (bt && (d.connected || d.selected || d.paired)) Row(Modifier.fillMaxWidth().padding(start = 56.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // conectar é tocar na linha; desconectar vale para o escolhido/conectado (USB também, como no desktop, 13/10);
+        // esquecer, para Bluetooth pareado
+        if (d.connected || d.selected || (bt && d.paired)) Row(Modifier.fillMaxWidth().padding(start = 56.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (d.connected || d.selected) TextButton(onClick = onDisconnect) { Text("Desconectar") }
             if (d.paired) TextButton(onClick = onForget) { Text("Esquecer", color = MaterialTheme.colorScheme.error) }
         }

@@ -135,9 +135,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // continuar no mesmo estabelecimento
         viewModelScope.launch {
             var wasConnected = client.connection.value == AditumClient.Connection.Connected
+            // já ligado ao serviço quando a tela nasceu: o init automático sai daqui
+            if (wasConnected && settings.state.value.initialized && current == Screen.Connect) init()
             client.connection.collect { c ->
                 val connected = c == AditumClient.Connection.Connected
-                if (connected && !wasConnected) lastInit?.let { reinit(it) }
+                if (connected && !wasConnected) {
+                    val again = lastInit
+                    // ao abrir, já inicializado antes: init sozinho com o código salvo, como o aditum-client abre direto na
+                    // tela inicial (Kelvin, 13/10); a tela de ativação mostra "Iniciando…" enquanto isso
+                    if (again != null) reinit(again) else if (settings.state.value.initialized && current == Screen.Connect) init()
+                }
                 wasConnected = connected
             }
         }
@@ -145,6 +152,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Último `InitRequest` que inicializou o terminal nesta sessão; reenviado quando o serviço reconecta sozinho. */
     private var lastInit: InitRequest? = null
+    /** Init que parou porque há mais de um pinpad e nenhum escolhido: refeito quando o operador escolhe na tela Pinpad. */
+    private var initAfterPinpadChoice: InitRequest? = null
+
+    /**
+     * Mais de um pinpad e nenhum escolhido: a tela Pinpad abre para o operador escolher (como o desktop, Kelvin, 13/10) e o
+     * init é refeito depois da escolha. Antes caía na tela de ativação com o terminal já ativado.
+     */
+    private fun askPinpadChoice(req: InitRequest, message: String): Boolean {
+        if (!message.contains("MAIS DE UM PINPAD", ignoreCase = true)) return false
+        initAfterPinpadChoice = req
+        reset(Screen.Connect); push(Screen.Pinpad)
+        say("Mais de um pinpad conectado: escolha qual usar")
+        return true
+    }
+
+    /** Init com um pedido já montado (refeito depois da escolha do pinpad). */
+    private fun initWith(req: InitRequest) {
+        if (initializing) return
+        initializing = true; initError = null
+        viewModelScope.launch {
+            when (val r = client.init(req)) {
+                is Res.Ok -> if (r.value.initialized) { lastInit = req; applyInit(r.value); settings.update { it.copy(initialized = true) }; reset(Screen.Home) } else { initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"; askPinpadChoice(req, initError.orEmpty()) }
+                is Res.Fail -> { initError = r.message; askPinpadChoice(req, r.message) }
+            }
+            initializing = false
+        }
+    }
 
     private fun reinit(req: InitRequest) {
         if (initializing) return
@@ -153,8 +187,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             when (val r = client.init(req)) {
                 is Res.Ok -> if (r.value.initialized) {
                     applyInit(r.value); say("Serviço reconectado: terminal inicializado de novo")
-                } else { initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"; reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: $initError") }
-                is Res.Fail -> { initError = r.message; reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: ${r.message}") }
+                } else { initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"; if (!askPinpadChoice(req, initError.orEmpty())) { reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: $initError") } }
+                is Res.Fail -> { initError = r.message; if (!askPinpadChoice(req, r.message)) { reset(Screen.Connect); say("Serviço reconectado, mas o init falhou: ${r.message}") } }
             }
             initializing = false
         }
@@ -196,9 +230,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             when (val r = client.init(req)) {
                 is Res.Ok -> if (r.value.initialized) {
-                    lastInit = req; applyInit(r.value); reset(Screen.Home)
-                } else initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"
-                is Res.Fail -> initError = r.message
+                    lastInit = req; applyInit(r.value); settings.update { it.copy(initialized = true) }; reset(Screen.Home)
+                } else { initError = r.value.errors?.firstOrNull()?.let { errorText(it) } ?: "O serviço não inicializou o terminal"; askPinpadChoice(req, initError.orEmpty()) }
+                is Res.Fail -> { initError = r.message; askPinpadChoice(req, r.message) }
             }
             initializing = false
         }
@@ -234,6 +268,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         busy = null
         say(if (ok) "Conectado ao pinpad ${d?.name ?: "(automático)"}" else "Não conectou em ${d?.name ?: "nenhum pinpad (automático)"}: confira se está ligado e perto. A escolha fica salva.")
         loadPinpads()
+        // o init que parou na escolha do pinpad segue agora
+        if (ok && d != null) initAfterPinpadChoice?.let { req -> initAfterPinpadChoice = null; initWith(req) }
     }
     fun disconnectPinpad(d: br.com.aditum.data.v2.model.PinpadDevice) = viewModelScope.launch {
         val ok = (client.disconnectPinpad(d) as? Res.Ok)?.value == true
@@ -272,6 +308,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 result = result?.copy(confirmed = !pending)
             }
             op = null; replaceOperationWith(Screen.Result)
+            // mais de um pinpad e nenhum escolhido: o resultado mostra o erro e a tela Pinpad abre por cima para a escolha,
+            // como no desktop (Kelvin, 13/10)
+            val err = (r as? Res.Ok)?.value?.errors?.firstOrNull()?.let { errorText(it) } ?: (r as? Res.Fail)?.message
+            if (err?.contains("MAIS DE UM PINPAD", ignoreCase = true) == true) { push(Screen.Pinpad); say("Mais de um pinpad conectado: escolha qual usar") }
         }
     }
 
@@ -406,7 +446,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         busy = "deactivate"
         viewModelScope.launch {
             val r = client.deactivate(); busy = null
-            if (r is Res.Ok && r.value) { merchant = null; terminal = null; brands = emptyList(); merchantLogo = null; brand = null; recent.clear(); result = null; reset(Screen.Connect); say("Terminal desativado") }
+            if (r is Res.Ok && r.value) { settings.update { it.copy(initialized = false) }; merchant = null; terminal = null; brands = emptyList(); merchantLogo = null; brand = null; recent.clear(); result = null; reset(Screen.Connect); say("Terminal desativado") }
             else say((r as? Res.Fail)?.message ?: "O serviço não desativou o terminal")
         }
     }
